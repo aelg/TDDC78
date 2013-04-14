@@ -42,7 +42,7 @@ int read_ppm (const char * fname,
 
   if (strncmp(ftype, ctype, 2) == 0) {
     if (fread (data, sizeof (char), *xpix * *ypix * 3, fp) != 
-	*xpix * *ypix * 3) {
+	(unsigned int)*xpix * *ypix * 3) {
       perror ("Read failed");
       return 2;
     }
@@ -74,7 +74,7 @@ int write_ppm (const char * fname, int xpix, int ypix, char * data) {
   
   fprintf (fp, "P6\n");
   fprintf (fp, "%d %d 255\n", xpix, ypix);
-  if (fwrite (data, sizeof (char), xpix*ypix*3, fp) != xpix*ypix*3) {
+  if (fwrite (data, sizeof (char), xpix*ypix*3, fp) != (unsigned int)xpix*ypix*3) {
     perror ("Write failed");
     return 2;
   }

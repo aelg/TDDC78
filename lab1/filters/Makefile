@@ -9,7 +9,7 @@ clean:
 	-$(RM) *.o blur thresc
 
 blurc: ppmio.o gaussw.o blurfilter.o blurmain.o
-	gcc -o $@ ppmio.o gaussw.o blurfilter.o blurmain.o $(LFLAGS)
+	gcc -O2 -o $@ ppmio.o gaussw.o blurfilter.o blurmain.o $(LFLAGS)
 
 thresc: thresmain.o ppmio.o thresfilter.o
 	gcc -o $@ thresmain.o ppmio.o thresfilter.o $(LFLAGS)
