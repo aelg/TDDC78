@@ -105,7 +105,7 @@ int main (int argc, char ** argv) {
   clock_gettime(CLOCK_REALTIME, &etime);
 
   run_time = (etime.tv_sec  - stime.tv_sec) + 1e-9*(etime.tv_nsec  - stime.tv_nsec);
-  float_ops = (double)xsize*ysize*(14*radius+7);
+  float_ops = (double)xsize*ysize*(14*radius+7)*2;
   printf("Filtering took: %g secs\n", run_time);
   /*printf("# floating point operations ~ %.0f\n", float_ops);*/
   printf("MFLOPS ~ %.2f\n", float_ops/(run_time*1000000));

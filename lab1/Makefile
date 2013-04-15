@@ -32,5 +32,17 @@ thresmain.o: thresmain.c
 thresc: thresmain.o ppmio.o thresfilter.o
 	gcc -o $@ thresmain.o ppmio.o thresfilter.o $(LFLAGS)
 
-arc:
-	tar cf - *.c *.h *.f90 Makefile Makefile.sgi|gzip - > filters.tar.gz
+mpippmio.o: ppmio.c ppmio.h
+	mpicc -o mpippmio.o -c $(CFLAGS) ppmio.c
+
+mpigaussw.o: gaussw.c gaussw.h
+	mpicc -o mpigaussw.o -c $(CFLAGS) gaussw.c
+
+mpiblurfilter.o: mpiblurfilter.c mpiblurfilter.h
+	mpicc -o mpiblurfilter.o -c $(CFLAGS) mpiblurfilter.c
+
+mpiblur.o: mpiblur.c
+	mpicc -o mpiblur.o -c $(CFLAGS) mpiblur.c
+
+mpiblurc: mpippmio.o mpigaussw.o mpiblurfilter.o mpiblur.o
+	mpicc -o $@ mpippmio.o mpigaussw.o mpiblurfilter.o mpiblur.o $(LFLAGS)
