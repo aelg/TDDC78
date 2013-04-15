@@ -14,11 +14,10 @@ int main (argc, argv)
   int argc;
   char *argv[];
 {
-  int sendcount;
+  int *sendcounts, *displs;
   int rank, size;
-  int y, i, blocksize, overlapping_data, recv_count, l_ysize;
+  int y, i, blocksize, overlapping_data, recv_count;
   pixel *src, *l_src, *l_dst;
-  MPI_STATUS status;
 
   MPI_Init (&argc, &argv);  /* starts MPI */
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);  /* get current process id */
@@ -71,31 +70,23 @@ int main (argc, argv)
     displs[0] = y*xsize*3;
     y += blocksize + (0 < ysize%size ? 1:0);
     for(i = 1; i < size-1; ++i){
-      sendcount = (blocksize + (i < ysize%size ? 1:0) + overlapping_data)*xsize*3;
-      MPI_Isend(src+y*xsize*3, sendcount, MPI_CHAR, i, 0, MPI_COMM_WORLD);
-      y += blocksize + (0 < ysize%size ? 1:0);
+      sendcounts[i] = (blocksize + (i < ysize%size ? 1:0) + overlapping_data)*xsize*3;
+      displs[i] = y*xsize*3;
+      y += blocksize + (i < ysize%size ? 1:0);
     }
-    sendcount = (blocksize + (size-1 < ysize%size ? 1:0) + radius-1)*xsize*3;
-    MPI_Send(src+y*xsize*3, sendcount, MPI_CHAR, i, 0, MPI_COMM_WORLD);
-
-    l_src = src;
-    l_ysize = blocksize + (0 < ysize%size ? 1:0) + radius - 1;
-    l_dst = malloc(l_ysize*xsize*3);
+    sendcounts[size-1] = (blocksize + (size-1 < ysize%size ? 1:0) + radius-1)*xsize*3;
+    displs[size-1] = y*xsize;
   }
 
   MPI_Bcast(&xsize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
   MPI_Bcast(&ysize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
   MPI_Bcast(&radius, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
 
-  if(rank > 0){
-    l_ysize = ysize/size + (radius-1)*((rank == size-1)?1:2) + (rank < ysize%size ? 1:0);
-    l_src = malloc(l_ysize*xsize*3);
-    l_dst = malloc(l_ysize*xsize*3);
-    MPI_Recv(l_src, l_ysize*xsize*3, MPI_CHAR, 0, 0, MPI_COMM_WORLD, &status);
-  }
-
-  blurfilter(l_src, xsize, rank*(ysize/size)*(rank < ysize%size ? :0)
-void blurfilter(pixel* start, int xsize, int ystart, int yend, double *w, int radius){
+  blocksize = ysize/size;
+  overlapping_data = (radius-1)*2;
+  recvcount = (blocksize + (rank < ysize%size ? 1:0) + overlapping_data)*xsize*3;
+  l_src = malloc(recvcount);
+  MPI_Scatterv((char*) src, sendcounts, displs, MPI_CHAR, l_src, recvcount, 0, MPI_COMM_WORLD);
 
 
   MPI_Finalize();

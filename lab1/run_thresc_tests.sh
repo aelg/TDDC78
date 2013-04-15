@@ -1,8 +1,8 @@
 #!/bin/bash
 
-for f in images/*.ppm
+for f in ../images/*.ppm
 do
-  file=${f/*\//output/}
+  file=${f/*\/*\//}
   echo "Image: $file"
   echo "Threads: 1"
   ./thresc 1 $f $file
