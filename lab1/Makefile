@@ -23,6 +23,12 @@ blurmain.o: blurmain.c
 blurc: ppmio.o gaussw.o blurfilter.o blurmain.o
 	gcc -o $@ ppmio.o gaussw.o blurfilter.o blurmain.o $(LFLAGS)
 
+thresfilter.o: thresfilter.c thresfilter.h
+	gcc -o thresfilter.o -c $(CFLAGS) thresfilter.c
+
+thresmain.o: thresmain.c
+	gcc -o thresmain.o -c $(CFLAGS) thresmain.c
+
 thresc: thresmain.o ppmio.o thresfilter.o
 	gcc -o $@ thresmain.o ppmio.o thresfilter.o $(LFLAGS)
 
