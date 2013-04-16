@@ -52,3 +52,12 @@ mpithreshold.o: mpithreshold.c
 
 mpithreshold: mpithreshold.o ppmio.o
 	mpicc -o $@ mpithreshold.o ppmio.o $(LFLAGS)
+
+mpithresfilter.o: thresfilter.c thresfilter.h
+	mpicc -o thresfilter.o -c $(CFLAGS) thresfilter.c
+
+mpithresmain.o: thresmain.c
+	mpicc -o thresmain.o -c $(CFLAGS) thresmain.c
+
+mpithresc: thresmain.o ppmio.o thresfilter.o
+	mpicc -o $@ thresmain.o ppmio.o thresfilter.o $(LFLAGS)
