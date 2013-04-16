@@ -22,8 +22,8 @@ int main (argc, argv)
   int *blockstart;
   int linelength;
   int radius, xsize, ysize, colmax;
-  double w[MAX_RAD], start_time, end_time, float_ops, run_time;
-  char *src, *l_src;
+  double w[MAX_RAD], start_time = 0, end_time, float_ops, run_time;
+  char *src = 0, *l_src = 0;
   MPI_Status status;
   MPI_Request *request;
 
@@ -92,17 +92,18 @@ int main (argc, argv)
 
   request = malloc(sizeof(MPI_Request)*(size-1));
   if(rank == 0){
+    char *datastart, *dataend;
     start_time = MPI_Wtime();
 
-    char *datastart, *dataend;
     for(i = 1; i < size; ++i){
       datastart = src+max(0, blockstart[i]-overlapping_lines)*linelength;
       dataend = src+min(ysize, blockstart[i+1]+overlapping_lines)*linelength;
       MPI_Isend(datastart, dataend-datastart, MPI_CHAR, i, 0, MPI_COMM_WORLD, &request[i-1]);
     }
 
-    l_src = src;
-    //l_ysize = blockstart[1];
+    l_src = malloc((blockstart[1]+overlapping_lines)*linelength);
+    memcpy(l_src, src, (blockstart[1]+overlapping_lines)*linelength);
+    /*l_src = src;*/
   }
 
   if(rank > 0){
@@ -111,12 +112,13 @@ int main (argc, argv)
     MPI_Recv(l_src, (l_ysize + overlapping_lines*2)*linelength, MPI_CHAR, 0, 0, MPI_COMM_WORLD, &status);
   }
 
+  if(rank == 0) start_time = MPI_Wtime();
   /*printf("Has read the image, generating coefficients\n");*/
 
   /* filter */
   get_gauss_weights(radius, w);
   
-  if(rank != 0) l_src += overlapping_lines*linelength;
+  if(rank != 0) l_src += (min(overlapping_lines, blockstart[rank]))*linelength;
   if(rank == 0) MPI_Waitall(size-1, request, MPI_STATUSES_IGNORE);
   blurfilter(l_src, xsize, ysize, blockstart[rank], blockstart[rank+1], w, radius);
 

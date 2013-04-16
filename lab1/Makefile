@@ -3,10 +3,10 @@ CFLAGS = -Wall -Wextra -pedantic -O2
 
 LFLAGS= -lpthread -lrt -lm
 
-all: blurc thresc
+all: blurc thresc mpiblurc
 
 clean:
-	-$(RM) *.o blur thresc
+	-$(RM) *.o blur thresc mpiblurc
 
 ppmio.o: ppmio.c ppmio.h
 	gcc -o ppmio.o -c $(CFLAGS) ppmio.c
