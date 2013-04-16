@@ -1,9 +1,9 @@
 
-CFLAGS = -Wall -Wextra -pedantic -O2
+CFLAGS = -Wall -Wextra -pedantic -O3
 
 LFLAGS= -lpthread -lrt -lm
 
-all: blurc thresc mpiblurc
+all: blurc thresc mpiblurc mpithreshold
 
 clean:
 	-$(RM) *.o blur thresc mpiblurc
@@ -46,3 +46,9 @@ mpiblur.o: mpiblur.c
 
 mpiblurc: mpippmio.o mpigaussw.o mpiblurfilter.o mpiblur.o
 	mpicc -o $@ mpippmio.o mpigaussw.o mpiblurfilter.o mpiblur.o $(LFLAGS)
+
+mpithreshold.o: mpithreshold.c
+	mpicc -o mpithreshold.o -c $(CFLAGS) mpithreshold.c
+
+mpithreshold: mpithreshold.o ppmio.o
+	mpicc -o $@ mpithreshold.o ppmio.o $(LFLAGS)

@@ -26,8 +26,7 @@ int main (argc, argv)
   /* Rank 0 reads file.*/
   if(rank == 0){
     src = malloc(sizeof(pixel)*MAX_PIXELS);
-    dst = malloc(sizeof(pixel)*MAX_PIXELS);
-    if(!src || !dst){
+    if(!src){
       printf("Could not allocate memory, exiting");
       exit(1);
     }
