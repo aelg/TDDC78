@@ -46,3 +46,12 @@ mpiblur.o: mpiblur.c
 
 mpiblurc: mpippmio.o mpigaussw.o mpiblurfilter.o mpiblur.o
 	mpicc -o $@ mpippmio.o mpigaussw.o mpiblurfilter.o mpiblur.o $(LFLAGS)
+
+mpithresfilter.o: thresfilter.c thresfilter.h
+	mpicc -o thresfilter.o -c $(CFLAGS) thresfilter.c
+
+mpithresmain.o: thresmain.c
+	mpicc -o thresmain.o -c $(CFLAGS) thresmain.c
+
+mpithresc: thresmain.o ppmio.o thresfilter.o
+	mpicc -o $@ thresmain.o ppmio.o thresfilter.o $(LFLAGS)
