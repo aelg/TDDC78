@@ -33,15 +33,12 @@ int main (argc, argv)
 
   /* Rank 0 reads file.*/
   if(rank == 0){
+    /* Allocate memory dynamically. (Had some problems with static allocation and huge image files.) */
     src = malloc(sizeof(pixel)*MAX_PIXELS);
     if(!src){
       printf("Could not allocate memory, exiting");
       exit(1);
     }
-
-    /*sendcounts = malloc(sizeof(int)*size);
-    displs = malloc(sizeof(int)*size);*/
-
 
     /* Take care of the arguments */
 
@@ -63,8 +60,13 @@ int main (argc, argv)
       fprintf(stderr, "Too large maximum color-component value\n");
       exit(1);
     }
+    printf("Read image.\n");
   }
 
+  /* Start clock for timing of execution. */
+  if(rank == 0) start_time = MPI_Wtime();
+
+  /* Distribute some image data. */
   MPI_Bcast(&xsize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
   MPI_Bcast(&ysize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
   MPI_Bcast(&radius, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
@@ -88,12 +90,15 @@ int main (argc, argv)
   MPI_Bcast(blockstart, size+1, MPI_INTEGER, 0, MPI_COMM_WORLD);
   /* blockstart[i] now contains starting line for data to be processed by rank i.
    * blockstart[i+1] contains the line after the last line in data to be processed by rank i.*/
-  /* recvcounts[] is used by MPI_Gatherv after processing. */
+  /* recvcounts[] and displs[] are used by MPI_Gatherv after processing. */
 
+  /* Allocate data for the request array to be able to wait for all send operations.*/
   request = malloc(sizeof(MPI_Request)*(size-1));
+
+  /* Send image data to all processes. */
   if(rank == 0){
     char *datastart, *dataend;
-    start_time = MPI_Wtime();
+    printf("Distributing image data to processes\n");
 
     for(i = 1; i < size; ++i){
       datastart = src+max(0, blockstart[i]-overlapping_lines)*linelength;
@@ -101,34 +106,44 @@ int main (argc, argv)
       MPI_Isend(datastart, dataend-datastart, MPI_CHAR, i, 0, MPI_COMM_WORLD, &request[i-1]);
     }
 
+    /* Copy image data of rank 0 to local buffer */
     l_src = malloc((blockstart[1]+overlapping_lines)*linelength);
     memcpy(l_src, src, (blockstart[1]+overlapping_lines)*linelength);
-    /*l_src = src;*/
   }
 
+  /* Recieve data at all nodes except the first one. */
   if(rank > 0){
     l_ysize = blockstart[rank+1] - blockstart[rank];
     l_src = malloc((l_ysize + overlapping_lines*2)*linelength);
     MPI_Recv(l_src, (l_ysize + overlapping_lines*2)*linelength, MPI_CHAR, 0, 0, MPI_COMM_WORLD, &status);
   }
 
-  if(rank == 0) start_time = MPI_Wtime();
-  /*printf("Has read the image, generating coefficients\n");*/
-
-  /* filter */
+  /* Generate coefficients for the filter*/
   get_gauss_weights(radius, w);
   
-  if(rank != 0) l_src += (min(overlapping_lines, blockstart[rank]))*linelength;
-  if(rank == 0) MPI_Waitall(size-1, request, MPI_STATUSES_IGNORE);
+  /* Move image data pointer to where the processing should begin.*/
+  l_src += (min(overlapping_lines, blockstart[rank]))*linelength;
+
+  if(rank == 0) printf("Running filter.\n");
+
+  /* Run filter. */
   blurfilter(l_src, xsize, ysize, blockstart[rank], blockstart[rank+1], w, radius);
 
+  /* Wait for all processes to complete the filtering before calling Gatherv().
+   * There could possibly be some writing to src before all data is sent if this is not done.*/
+  MPI_Barrier(MPI_COMM_WORLD);
+  if(rank == 0){
+    printf("All filtering is complete.\n");
+  }
+  /* Gather all data from the processes. */
   MPI_Gatherv(l_src, recvcounts[rank], MPI_CHAR, src, recvcounts, displs, MPI_CHAR, 0, MPI_COMM_WORLD);
 
   if(rank == 0){
+    end_time = MPI_Wtime();
+    printf("Writing data to disk.\n");
     if(write_ppm (argv[3], xsize, ysize, (char *)src) != 0)
       exit(1);
 
-    end_time = MPI_Wtime();
     run_time = end_time - start_time;
     float_ops = (double)xsize*ysize*(14*radius+7)*2;
     printf("Filtering took: %g secs\n", run_time);
