@@ -88,6 +88,8 @@ int main (argc, argv)
   MPI_Allreduce(&sum, &average, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   average = average/(xsize*ysize);
 
+  printf("First pass done.\nStarting second pass.\n");
+
   /* Threshold. */
   for(i = 0; i < recvcounts[rank]; i += 3){
     if (l_src[i] + l_src[i+1] + l_src[i+2] > average)

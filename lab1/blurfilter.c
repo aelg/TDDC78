@@ -32,6 +32,11 @@ void *blurfilter(void *attr){
   double r,g,b,n, wc;
   pixel *pos = pix(src, 0, starty, xsize), *tpos;
 
+  /* Run the filter. Essentially the same code as the sequential code given for the lab.
+   * The sequential code used two passes to do the filtering. 
+   * This is achieved by running the first pass twice but transposing the output after each run.
+   * This will probably utilise the cache more.
+   * Some temporary variables are used to avoid repeating some calculations. */  
   for (y = starty; y<stopy; ++y) {
     for (x=0; x<xsize; ++x) {
       r = w[0] * pos->r;

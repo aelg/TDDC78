@@ -14,6 +14,7 @@ int main (int argc, char ** argv) {
   int radius, num_threads;
   int xsize, ysize, colmax;
   int y, x, i;
+  /* Allocating memory dynamically since there was segfaulting when this was done statically.*/
   pixel *src = malloc(sizeof(pixel)*MAX_PIXELS), *dst = malloc(sizeof(pixel)*MAX_PIXELS);
   struct timespec stime, etime;
   struct blurfilter_attr threads_params[MAX_THREADS];
@@ -47,16 +48,15 @@ int main (int argc, char ** argv) {
     fprintf(stderr, "Too large maximum color-component value\n");
     exit(1);
   }
+  printf("Read image.\n");
 
-  /*printf("Has read the image, generating coefficients\n");*/
-
-  /* filter */
+  /* get filter */
   get_gauss_weights(radius, w);
 
-  /*printf("Calling filter\n");*/
-
+  /* Start timing, when image has been read. */
   clock_gettime(CLOCK_REALTIME, &stime);
 
+  printf("Starting threads for first pass.\n");
   x = y = 0;
   for(i = 0; i < num_threads; ++i){
     /* Fill data for the thread.*/
@@ -81,8 +81,11 @@ int main (int argc, char ** argv) {
     void *status;
     pthread_join(thread_ids[i], &status);
   }
+  printf("First pass done.\nStarting second pass.\n");
   /* After first pass the picture will be transposed and stored in dst.
-     Note the exchange of x and y everywhere.*/
+   * This means that the same function can be used for the next pass.
+   * It will probably also mean that we make better use of the cache.
+   * Note the exchange of x and y everywhere.*/
   for(i = 0;  i < num_threads; ++i){
     threads_params[i].xsize = ysize;
     threads_params[i].ysize = xsize;
@@ -101,8 +104,15 @@ int main (int argc, char ** argv) {
     void *status;
     pthread_join(thread_ids[i], &status);
   }
+  printf("All filtering is complete.\n");
 
+  /* Stop clock before data is written do disk. */
   clock_gettime(CLOCK_REALTIME, &etime);
+
+  /* write result */
+  printf("Writing data to disk.\n");
+  if(write_ppm (argv[4], xsize, ysize, (char *)src) != 0)
+    exit(1);
 
   run_time = (etime.tv_sec  - stime.tv_sec) + 1e-9*(etime.tv_nsec  - stime.tv_nsec);
   float_ops = (double)xsize*ysize*(14*radius+7)*2;
@@ -110,11 +120,7 @@ int main (int argc, char ** argv) {
   /*printf("# floating point operations ~ %.0f\n", float_ops);*/
   printf("MFLOPS ~ %.2f\n", float_ops/(run_time*1000000));
 
-  /* write result */
-  /*printf("Writing output file\n");*/
 
-  if(write_ppm (argv[4], xsize, ysize, (char *)src) != 0)
-    exit(1);
 
   free(src);
   free(dst);

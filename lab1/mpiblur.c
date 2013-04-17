@@ -122,7 +122,7 @@ int main (argc, argv)
   get_gauss_weights(radius, w);
   
   /* Move image data pointer to where the processing should begin.*/
-  l_src += (min(overlapping_lines, blockstart[rank]))*linelength;
+  l_src += min(overlapping_lines, blockstart[rank])*linelength;
 
   if(rank == 0) printf("Running filter.\n");
 
@@ -150,6 +150,13 @@ int main (argc, argv)
     /*printf("# floating point operations ~ %.0f\n", float_ops);*/
     printf("MFLOPS ~ %.2f\n", float_ops/(run_time*1000000));
   }
+  
+  free(l_src - min(overlapping_lines, blockstart[rank])*linelength);
+  free(blockstart);
+  free(recvcounts);
+  free(displs);
+  free(request);
+  free(src);
 
   MPI_Finalize();
   return 0;
