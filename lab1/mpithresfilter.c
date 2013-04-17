@@ -2,8 +2,8 @@
 
 #define uint unsigned int 
 
-int64_t thresfiltersum(pixel *src,long nump){
-	int64_t sum;
+SUM_TYPE thresfiltersum(pixel *src,long nump){
+	SUM_TYPE sum;
 	int i;
 
 	for(i = 0, sum = 0; i < nump; i++) {
@@ -15,8 +15,9 @@ int64_t thresfiltersum(pixel *src,long nump){
 	return sum;
 }
 
-void thresfilteravg(pixel *src,long nump,int64_t sum) {
+void thresfilteravg(pixel *src,long nump,SUM_TYPE sum) {
 	uint i,psum;
+	printf("sum:%lf",sum);
 
 	for(i = 0, psum = 0; i < nump; i++) {
 		psum += (uint)src[i].r 
@@ -29,6 +30,7 @@ void thresfilteravg(pixel *src,long nump,int64_t sum) {
 		else {
 			src[i].r = src[i].g = src[i].b = 255;
 		}
+		psum = 0;
 	}
 	
 	return 0;
