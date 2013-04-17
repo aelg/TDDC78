@@ -60,6 +60,7 @@ for key,value in data.items():
   print(out2)
 
 plot = plot[:-2] + ');'
+print('figure();')
 print(plot)
 legend += 'Location\', \'NorthWest\');'
 print(legend)

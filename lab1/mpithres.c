@@ -83,6 +83,7 @@ char *argv[];
 		blockstart = malloc(sizeof(int)*(nproc+1));
 	MPI_Bcast(blockstart, nproc+1, MPI_INTEGER, 0, MPI_COMM_WORLD);
 
+  if(rank == 0) printf("asdf\n");
 	/* distribute the work */
 	recvcount = (blockstart[rank+1]-blockstart[rank])*pixel_length;
 	l_src = malloc(sizeof(char)*recvcount);
@@ -91,13 +92,16 @@ char *argv[];
 	/* calculate pixel sum */
 	l_sum = thresfiltersum(l_src,recvcount/pixel_length);
 
+  if(rank == 0) printf("asdf\n");
 	/* gather local sums, add them and redistribute total sum */
 	MPI_Allreduce(&l_sum,&g_sum,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
 
 	/* run filter */
 	thresfilteravg(l_src,recvcount/pixel_length,g_sum/(xsize*ysize));
 	/* gather result */
+  if(rank == 0) printf("asdf\n");
 	MPI_Gatherv((char *)l_src,recvcount,MPI_CHAR,(char *)src,counts,displs,MPI_CHAR,0,MPI_COMM_WORLD);
+  if(rank == 0) printf("asdf\n");
 	/* print output */
 	if (rank == 0 && write_ppm(argv[3],xsize,ysize,(char *)src) != 0) 
 		exit(1);

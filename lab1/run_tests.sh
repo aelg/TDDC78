@@ -1,5 +1,6 @@
 #!/bin/bash
 
+<<COMMENT
 for f in ../images/*.ppm
 do
   file=${f/*\/*\//}
@@ -24,4 +25,17 @@ do
   echo "Radius: 100"
   ./blurc 8 100 $f $file
   echo
+done
+COMMENT
+
+for threads in 1 4 8 16
+do
+  for f in ../images/*.ppm
+  do
+    file=${f/*\/*\//}
+    echo "Image: $file"
+    echo "Threads: $threads"
+    ./thresc $threads $f $file
+    echo
+  done
 done
