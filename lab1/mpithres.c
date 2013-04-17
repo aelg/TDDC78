@@ -17,12 +17,12 @@ char *argv[];
 	int *counts, *displs;
 	int rank, nproc;
 	int pos, i, blocksize ,totsize, xsize, ysize, colmax;
-	pixel *src, *l_src, *l_dst;
+	pixel *src, *l_src;
 	int *blockstart;
 	const int pixel_length = 3;
 	int recvcount;
-	int64_t l_sum;
-	int64_t g_sum;
+	double l_sum;
+	double g_sum;
 
 	MPI_Init (&argc, &argv);  /* starts MPI */
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);  /* get current process id */
@@ -52,50 +52,52 @@ char *argv[];
 			exit(1);
 		}
 
+
 		/* Calculate offsets for data to be sent to processes. */
 		
-		totsize = xsize*ysize*pixel_length;
-		blocksize = totsize/(pixel_length*nproc); /* blocksize in pixels */
+		totsize = xsize*ysize; /* totsize in pixels */
+		blocksize = totsize/(nproc); /* blocksize in pixels */
 		blockstart = malloc(sizeof(int)*(nproc+1));
 		counts = malloc(sizeof(int)*nproc);
 		pos = 0;
-
 		for(i = 0; i <= nproc; ++i){
 			blockstart[i] = pos;
 			if(i != nproc){
-				pos += blocksize*pixel_length + (i < totsize%(pixel_length*nproc) ? 1:0);
-				counts[i] = (pos-blockstart[i]);
+				pos += blocksize + (i < totsize%(nproc) ? 1:0);
+				counts[i] = (pos-blockstart[i])*pixel_length;
 			}
 		}
 		displs = malloc(sizeof(int)*nproc);
 		memcpy(displs,counts,nproc); /* mpi_scatter demands that displs and counts not be read from the same space */
-		MPI_Bcast(blockstart, nproc+1, MPI_INTEGER, 0, MPI_COMM_WORLD);
-
 		/* blockstart[i] now contains starting line for data to be processed by rank i.
 		 * blockstart[i+1] contains the line after the last line in data to be processed by rank i.*/
         /* counts[] is used by MPI_Gatherv and MPI_Scatterv to determine how much data each process processes */
 
 	   
 	}
-	
+
+	MPI_Bcast(&xsize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&ysize, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
+
+	if (rank != 0)
+		blockstart = malloc(sizeof(int)*(nproc+1));
+	MPI_Bcast(blockstart, nproc+1, MPI_INTEGER, 0, MPI_COMM_WORLD);
+
 	/* distribute the work */
-	recvcount = blockstart[rank+1]-blockstart[rank];
-	l_src = malloc(recvcount);
-	
-	MPI_Scatterv((char*) src, counts, displs, MPI_CHAR, l_src, recvcount,MPI_CHAR, 0, MPI_COMM_WORLD);
+	recvcount = (blockstart[rank+1]-blockstart[rank])*pixel_length;
+	l_src = malloc(sizeof(char)*recvcount);
+	MPI_Scatterv((char*) src, counts, displs, MPI_CHAR,(char *) l_src, recvcount,MPI_CHAR, 0, MPI_COMM_WORLD);
 
 	/* calculate pixel sum */
 	l_sum = thresfiltersum(l_src,recvcount/pixel_length);
 
 	/* gather local sums, add them and redistribute total sum */
-	MPI_Allreduce(&l_sum,&g_sum,1,MPI_INT,MPI_SUM,MPI_COMM_WORLD);
+	MPI_Allreduce(&l_sum,&g_sum,1,MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
 
 	/* run filter */
-	thresfilteravg(l_src,recvcount/pixel_length,g_sum);
-
+	thresfilteravg(l_src,recvcount/pixel_length,g_sum/(xsize*ysize));
 	/* gather result */
-	MPI_Gatherv(l_src,recvcount,MPI_CHAR,src,counts,displs,MPI_CHAR,0,MPI_COMM_WORLD);
-
+	MPI_Gatherv((char *)l_src,recvcount,MPI_CHAR,(char *)src,counts,displs,MPI_CHAR,0,MPI_COMM_WORLD);
 	/* print output */
 	if (rank == 0 && write_ppm(argv[3],xsize,ysize,(char *)src) != 0) 
 		exit(1);
