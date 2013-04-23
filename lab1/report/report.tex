@@ -1,6 +1,6 @@
 \documentclass[a4paper,11pt]{article}
 %\documentclass[a4paper,9pt,landscape]{article}
-\usepackage[english,swedish]{babel}
+\usepackage[english]{babel}
 %\usepackage[utf8]{inputenc}
 \usepackage{graphicx}
 \usepackage{fullpage}
@@ -85,6 +85,48 @@ When the processes are done eith the filtering a Gatherv operation is performed 
 This process then writes the filtered image to disk.
 
 \subsection{Result and graphs}
+
+The runtimes of this program when changing problemsize and the number of cores are more or less as expected.
+The runtime is proportional to the radius of the applied filter kernel and the number of pixels in the image.
+It is inversely proportional to the number of processes.
+This is at least true when the size of the filter kernel is larger than 5.
+When the radius is small the operations that sends and recieve data between the different processes becomes more noticeable.
+This is because the complexity of the filter operation will start to become small in comparision to the complexity of shuffling data.
+The same thing happens on the small image.
+
+In Figure \ref{32_cores_runtime} the run time hardly increases at all when increasing the radius on image 1.
+The filtering complexity for this image gets 100 times larger when increasing the radius 100 times, but the run time is more or less constant.
+It is such a small part of the total run time of the program.
+The size of the 3 smallest images don't influence the runt time when the radius is small either.
+There seems to be about 0.03 seconds here that is wasted on starting all the processes.
+
+In Figure \ref{im4} we can see how the program performs on the largest image.
+One can clearly see that the run time is proportional to the radius of the filter kernel.
+One can also see the run time is inversely proportinal to the numbers of cores.
+Figure \ref{complexity} shows how run time changes when both the problem size and the number of cores are changed.
+Each picture of the pictures 1, 2 and 3 are roughly twice as as large as the previous in terms of number of pixels.
+In the plot \emph{im3.ppm} is run with twice the number of cores as \emph{im2.ppm} which is run with twice as many cores as \emph{im1.ppm}.
+This should mean that each line in the plot should correspond to roughly the same computational complexity.
+In the plot the lines are rougly equal as should be the case.
+If the problem size is larger one can use more cores to solve it in the same amount of time.
+
+\begin{figure}[!h]
+  \caption{Run times related to radius on 32 cores for the different images.}
+  \label{32_cores_runtime}
+  \includegraphics[scale=0.9]{../plots/32_cores_runtime_radius.png}
+\end{figure}
+\begin{figure}[!h]
+  \caption{Run times for different numbers of cores on im4.ppm.}
+  \label{im4}
+  \includegraphics[scale=0.9]{../plots/im4_runtime_radius.png}
+\end{figure}
+\begin{figure}[!h]
+  \caption{Run times related to radius when increasing image size and number of cores.}
+  \label{complexity}
+  \includegraphics[scale=0.9]{../plots/compexity_and_no_processes.png}
+\end{figure}
+\newpage
+
 \section{Thresholding filter}
 The thresholding filter turns a coloured image into a black and white image. A pixel in the filtered image is black if its colour intensity is lower than a threshold, otherwise white. The colour intensity is calculated by summing the RGB values of a pixel. The threshold is determined by the average colour intensity of all the pixels.
 \subsection{Description of the program}

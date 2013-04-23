@@ -148,12 +148,19 @@ mpi_thres_16_cores = [0.0297282 0.0194161 0.0152361 0.0306139];
 mpi_thres_1_core = [0.00366712 0.00708914 0.01314 0.062237];
 mpi_thres_4_cores = [0.002702 0.00367713 0.00692105 0.0318539];
 im = [1 2 3 4];
+%cores = [1 4 8 16];
+%mpi_im2_core_var = [mpi_thres_1_core(2) mpi_thres_4_cores(2) mpi_thres_8_core(2) mpi_thres_16_cores(2)];
+im = [1 2 3 4];
 figure(10)
 plot(im, mpi_thres_1_core, '-x', im, mpi_thres_4_cores, '-x', im, mpi_thres_8_cores, '-x', im, mpi_thres_16_cores, '-x');
+%plot(cores, mpi_im2_core_var, '-x', cores, mpi_im2_core_var, '-x', cores, mpi_im2_core_var, '-x', cores, mpi_im2_core_var, '-x');
 legend('1 core', '4 cores', '8 cores', '16 cores', 'Location', 'NorthWest');
 xlabel('Image');
 ylabel('Run time');
 title('Threshold filter with mpi on different images');
+
+%%
+
 
 %%
 thres_1_thread = [0.0025102 0.00499036 0.00936788 0.0392];
