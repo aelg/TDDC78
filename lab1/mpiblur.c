@@ -87,7 +87,7 @@ int main (argc, argv)
       recvcounts[i] = (y-blockstart[i])*linelength;
     }
   }
-  MPI_Bcast(blockstart, size+1, MPI_INTEGER, 0, MPI_COMM_WORLD);
+  //MPI_Bcast(blockstart, size+1, MPI_INTEGER, 0, MPI_COMM_WORLD);
   /* blockstart[i] now contains starting line for data to be processed by rank i.
    * blockstart[i+1] contains the line after the last line in data to be processed by rank i.*/
   /* recvcounts[] and displs[] are used by MPI_Gatherv after processing. */

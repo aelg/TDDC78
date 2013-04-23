@@ -17,8 +17,8 @@
 %\setlength{\marginparsep}{0.5cm}
 
 
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{-0.1cm}
+\setlength{\parindent}{1cm}
+%\setlength{\parskip}{-0.1cm}
 %\setlength{\columnseprule}{0.4pt}
 \setlength{\footskip}{0.5cm}
 \setlength{\headheight}{15pt}
@@ -65,7 +65,25 @@
 %\tableofcontents
 
 \section{Averaging filter}
+The averaging filter works by convoluting the input image with a gaussian filter kernel.
+This will do a weighted average on the pixel and the pixels surrounding it.
+Since the gaussian kernel is symmetric the the calculation can be simplified, this makes the problem linear in the radius of the kernel.
 \subsection{Description of the program}
+The program uses the MPI framework for communication between the processes.
+Parallelization is done by splitting the picture into equal regions along the y-axis.
+Each process then apply the filter on the region that is given to it. 
+Since the filter does averaging on the neighbouring pixels each process needs more data than the pixels which it filters.
+This makes it neccesary to send more data to each process than the data that belongs to the region which it filters.
+
+The process with rank 0 reads the image from disk.
+When this is done it broadcast the dimension of the picture.
+Every process then calculates how the picture is divided into regions and shared between the processes.
+When this is done the rank 0 process send the data to the processes, each process gets all data needed to do its own filtering.
+As soon as a process has recieved its data it will start applying the filter to it.
+The rank 0 thread also gets a region of the image and start processing as soon as possible, the send operations are non-blocking so this should occur fairly quickly.
+When the processes are done eith the filtering a Gatherv operation is performed to collect all the data at the rank 0 process.
+This process then writes the filtered image to disk.
+
 \subsection{Result and graphs}
 
 \section{Thresholding filter}
