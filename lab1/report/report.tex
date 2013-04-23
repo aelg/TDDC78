@@ -85,15 +85,12 @@ When the processes are done eith the filtering a Gatherv operation is performed 
 This process then writes the filtered image to disk.
 
 \subsection{Result and graphs}
-
 \section{Thresholding filter}
+The thresholding filter turns a coloured image into a black and white image. A pixel in the filtered image is black if its colour intensity is lower than a threshold, otherwise white. The colour intensity is calculated by summing the RGB values of a pixel. The threshold is determined by the average colour intensity of all the pixels.
 \subsection{Description of the program}
-This program turns a coloured image into a black and white image. 
+The first step is determining the average pixel intensity by adding the RGB values of each pixel in the image together and dividing by the total number of pixels. The program then looks at the RGB sum for each pixel in turn and determines if the corresponding pixel of the output image should be black or white by whether it's greater or lower than the average.
 
-The first step is determining the average pixel intensity by adding the RGB values of each pixel in the image together and dividing by the total number of pixels. The program then remakes the looks at the RGB sum for each pixel in turn and determines if the corresponding pixel of the output image should be black or white by whether it's greater or lower than the average.
-
-Overview of the linear program
-
+\paragraph\noindent\textbf{Overview of the linear program}
 \begin{itemize}
 \renewcommand{\labelitemi}{$\bullet$}
 \item Load image from disk
@@ -102,13 +99,11 @@ Overview of the linear program
 \item Write image to disk
 \end{itemize}
 
-Because there is no dependency between pixels during either of the two calculations the work can easily be divided between an arbitrary amount of processors by giving them an as equal share as possible. 
+Because there is no dependency between pixels during either of the two calculations the work can easily be divided between an arbitrary amount of processors by giving them an as equal share as possible with no concern for locality. 
 
-The program calculates the work share of each processor and then sends the relevant part of the sourceimage from the processor that loaded the image from disk by the MPI\_Scatter command. 
+The program calculates the work share of each processor and then distributes the splitted source image by using the MPI\_Scatter command. The processors then calculate the RGB sum of their share and the total sum is then calculated and redistributed for the second calculation by using the MPI\_Allreduce command.
 
-The processors then calculate the RGB sum of their share and the total sum is then calculated and redistributed for the second calculation by using the MPI\_Allreduce command.
-
-Overview of the parallel program
+\paragraph\noindent\textbf{Overview of the parallel program}
 
 \begin{itemize}
 \renewcommand{\labelitemi}{$\bullet$}
