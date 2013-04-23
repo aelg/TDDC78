@@ -17,7 +17,6 @@ SUM_TYPE thresfiltersum(pixel *src,long nump){
 
 void thresfilteravg(pixel *src,long nump,SUM_TYPE sum) {
 	uint i,psum;
-	printf("sum:%lf",sum);
 
 	for(i = 0, psum = 0; i < nump; i++) {
 		psum += (uint)src[i].r 
