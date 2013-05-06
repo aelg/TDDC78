@@ -19,6 +19,7 @@ struct blurfilter_attr{
   pixel *src, *dst;
 };
 
-void blurfilter(char* start, int xsize, int ysize, int ystart, int yend, double *w, int radius);
+void blurfilter(char* start, int xsize, int ysize,
+    int ystart, int yend, double *w, int radius);
 
 #endif

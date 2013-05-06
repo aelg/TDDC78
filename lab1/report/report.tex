@@ -12,6 +12,7 @@
 \usepackage{fancyhdr}
 \usepackage[top=1.5cm, bottom=4cm, left=2.5cm, right=2.5cm]{geometry}
 \usepackage{hyperref}
+\usepackage{verbatim}
 \setlength{\voffset}{-9pt}
 %\setlength{\hoffset}{-1in}
 %\setlength{\marginparsep}{0.5cm}
@@ -37,17 +38,17 @@
 \lstset{
   title=\lstname,
   frame=t,
-  aboveskip=-0.5cm, 
-  belowskip=0pt,
+  %aboveskip=-0.5cm, 
+  %belowskip=0pt,
   basicstyle=\footnotesize\ttfamily,
   keywordstyle=\color{blue},          % keyword style
   commentstyle=\color{dkgreen},       % comment style
   stringstyle=\color{mauve},         % string literal style
   showstringspaces=false,         % underline spaces within strings
   tabsize=2,
-  language=C++,
+  language=C,
   title=\caption,
-  xleftmargin=-1cm
+  %xleftmargin=-1cm
 }
 
 
@@ -80,36 +81,64 @@ When this is done it broadcast the dimension of the picture.
 Every process then calculates how the picture is divided into regions and shared between the processes.
 When this is done the rank 0 process send the data to the processes, each process gets all data needed to do its own filtering.
 As soon as a process has recieved its data it will start applying the filter to it.
-The rank 0 thread also gets a region of the image and start processing as soon as possible, the send operations are non-blocking so this should occur fairly quickly.
-When the processes are done eith the filtering a Gatherv operation is performed to collect all the data at the rank 0 process.
+The rank 0 process also gets a region of the image and start processing as soon as possible.
+When the processes are done with the filtering a \emph{MPI\_Gatherv} operation is performed to collect all the data at the rank 0 process.
 This process then writes the filtered image to disk.
+
+At first the nonblocking send was used to distribute data to the processes.
+When the program was analyzed with traceanalyzer it was discovered that this is not a good thing to do.
+The nonblocking send does not send the data immediately.
+It seems that what is done is put the data into a buffer and send this when another MPI call is waiting to complete.
+The result of this behavoiur is that the root process completes its own filtering before sending any data to the other processes.
+This makes all the other processes idle while the root process filter the data given to it, this effectively doubles the execution time of the program.
+When using the blocking send operation all data is sent before any filtering and the non-root processes are only idle when data is read and written to disk.
 
 \subsection{Result and graphs}
 
-The runtimes of this program when changing problemsize and the number of cores are more or less as expected.
-The runtime is proportional to the radius of the applied filter kernel and the number of pixels in the image.
-It is inversely proportional to the number of processes.
-This is at least true when the size of the filter kernel is larger than 5.
-When the radius is small the operations that sends and recieve data between the different processes becomes more noticeable.
-This is because the complexity of the filter operation will start to become small in comparision to the complexity of shuffling data.
-The same thing happens on the small image.
+If a small filter kernel is used the read and write operations becomes a large part of the execution time of the program.
+A filter kernel with radius 10 run on 8 cores uses more time for reading the image from disk than to do the filtering.
+This is a sequencial operation that might be possibly to optimize, but this is left out of this report.
+This has made us ignore the time used for reading and writing to disk from of the execution time calculations used below.
+The send operations that distribute data among the processes is still in the calculations as these are an important part of any parallel program.
+The traceanlyzer tool produced the chart in figure \ref{trace} the chart is from a run on \emph{im4.ppm} with 8 cores and a filter kernel radius of 10.
+Apart from the disk read/write the the load balancing seems good and the send operations are a small part of the total execution time of the program.
 
-In Figure \ref{32_cores_runtime} the run time hardly increases at all when increasing the radius on image 1.
-The filtering complexity for this image gets 100 times larger when increasing the radius 100 times, but the run time is more or less constant.
-It is such a small part of the total run time of the program.
+The execution times of this program when changing problemsize and the number of cores are more or less as expected.
+The execution time is proportional to the radius of the applied filter kernel and the number of pixels in the image.
+It is inversely proportional to the number of processes.
+This is at least true when the size of the filter kernel is larger than 10.
+When the radius is small the operations that sends and recieve data between the different processes becomes more noticeable.
+This might be because the complexity of the filter operation will start to become small in comparision to the complexity of shuffling data.
+There might also be cache effects or timing issues because of process initialization when the total excecution time is very low.
+
+In figure \ref{32_cores_runtime} the execution time hardly increases at all when increasing the radius on image 1.
+The filtering complexity for this image gets 100 times larger when increasing the radius 100 times, but the execution time is more or less constant.
+It is such a small part of the total execution time of the program.
 The size of the 3 smallest images don't influence the runt time when the radius is small either.
 There seems to be about 0.03 seconds here that is wasted on starting all the processes.
 
-In Figure \ref{im4} we can see how the program performs on the largest image.
-One can clearly see that the run time is proportional to the radius of the filter kernel.
-One can also see the run time is inversely proportinal to the numbers of cores.
-Figure \ref{complexity} shows how run time changes when both the problem size and the number of cores are changed.
+In figure \ref{im4} we can see how the program performs on the largest image.
+The execution time is proportional to the radius of the filter kernel.
+One can also see the execution time is inversely proportional to the numbers of cores.
+Figure \ref{complexity} shows how execution time changes when both the problem size and the number of cores are changed.
 Each picture of the pictures 1, 2 and 3 are roughly twice as as large as the previous in terms of number of pixels.
 In the plot \emph{im3.ppm} is run with twice the number of cores as \emph{im2.ppm} which is run with twice as many cores as \emph{im1.ppm}.
 This should mean that each line in the plot should correspond to roughly the same computational complexity.
-In the plot the lines are rougly equal as should be the case.
-If the problem size is larger one can use more cores to solve it in the same amount of time.
+In the plot the lines are roughly equal as it should be.
+If the problem size is larger more cores can be used to solve it in the same amount of time.
 
+The number of floating points operations per second was also estimated.
+This number should ideally be the same for all problem sizes on a fixed number of cores, it should also be proportional to the number of cores.
+This is not true for small problem sizes.
+When the total excecution time of the program is below about 0.03 seconds it seems to be uncorrelated with the problem size.
+The reason for this might be various cache effects or initialization times for the different processes.
+For the bigger problem sizes the MFLOP count converges to about 1800 MFLOP per process.
+
+\begin{figure}[!h]
+  \caption{Traceanalyzer chart for im4.ppm on 8 cores with radius 10.}
+  \label{trace}
+  \includegraphics[width=500pt]{../plots/tracechart_r10_im4_8cores.png}
+\end{figure}
 \begin{figure}[!h]
   \caption{Run times related to radius on 32 cores for the different images.}
   \label{32_cores_runtime}
@@ -125,7 +154,8 @@ If the problem size is larger one can use more cores to solve it in the same amo
   \label{complexity}
   \includegraphics[scale=0.9]{../plots/compexity_and_no_processes.png}
 \end{figure}
-\newpage
+
+\clearpage
 
 \section{Thresholding filter}
 The thresholding filter turns a coloured image into a black and white image. A pixel in the filtered image is black if its colour intensity is lower than a threshold, otherwise white. The colour intensity is calculated by summing the RGB values of a pixel. The threshold is determined by the average colour intensity of all the pixels.
@@ -160,31 +190,8 @@ The program calculates the work share of each processor and then distributes the
 \end{itemize}
 
 \subsection{Result and graphs}
-\begin{table}[h!]
-  \label{entropitakt}
-  \caption{Entropitakter beroende pmodellordning f testfilerna.}
-  \begin{tabular}[h]{|l|l|l|l|l|l|l|l|l|l|}
-    \hline
-    Modellordning & 0     & 1     & 2     & 3     & 4     & 5     & 6     & 7     & 8\\
-    \hline
-    alice29.txt   & 4.568 & 3.419 & 2.485 & 1.777 & 1.324 & 0.978 & 0.724 & 0.522 & 0.371 \\ 
-    asyoulik.txt  & 4.808 & 3.418 & 2.538 & 1.896 & 1.380 & 0.966 & 0.661 & 0.425 & 0.265 \\ 
-    cp.html       & 5.229 & 3.467 & 1.738 & 0.774 & 0.443 & 0.328 & 0.266 & 0.229 & 0.197 \\ 
-    fields.c      & 5.007 & 2.950 & 1.470 & 0.867 & 0.624 & 0.499 & 0.374 & 0.265 & 0.203 \\ 
-    grammar.lsp   & 4.630 & 2.805 & 1.286 & 0.670 & 0.448 & 0.370 & 0.302 & 0.246 & 0.174 \\ 
-    kennedy.xls   & 3.573 & 2.777 & 1.712 & 1.577 & 1.442 & 1.354 & 1.261 & 1.123 & 1.065 \\ 
-    lcet10.txt    & 4.669 & 3.497 & 2.612 & 1.838 & 1.376 & 1.078 & 0.842 & 0.646 & 0.485 \\ 
-    plrabn12.txt  & 4.531 & 3.366 & 2.717 & 2.138 & 1.729 & 1.377 & 1.047 & 0.742 & 0.487 \\ 
-    ptt5          & 1.210 & 0.824 & 0.705 & 0.530 & 0.397 & 0.316 & 0.283 & 0.265 & 0.248 \\ 
-    sum           & 5.329 & 3.298 & 1.931 & 1.199 & 0.740 & 0.540 & 0.448 & 0.338 & 0.199 \\ 
-    xargs.1       & 4.897 & 3.194 & 1.549 & 0.727 & 0.427 & 0.279 & 0.196 & 0.158 & 0.124 \\ 
-    bible.txt     & 4.343 & 3.269 & 2.479 & 1.911 & 1.576 & 1.369 & 1.201 & 1.045 & 0.890 \\ 
-    E.coli        & 2.000 & 1.981 & 1.963 & 1.951 & 1.943 & 1.936 & 1.930 & 1.920 & 1.889 \\ 
-    world192.txt  & 4.998 & 3.660 & 2.771 & 1.918 & 1.287 & 0.912 & 0.714 & 0.587 & 0.483 \\ 
-    \hline
-  \end{tabular}
-\end{table}
 
+\begin{comment}
 \cite{fenwick}
 \clearpage
 \begin{thebibliography}{9}
@@ -200,18 +207,15 @@ The program calculates the work share of each processor and then distributes the
     PPM
     \url{http://www.cs.ucf.edu/courses/cap5015/ppm.pdf}
 
-\end{thebibliography}
+\end{thebibliography}a
+\end{comment}
 
 \clearpage
-\section{Källkod}
-%
-%\lstinputlisting[caption=entropy.cc]{../entropy.cc}
-%\clearpage
-%\lstinputlisting[caption=huffman.cc]{../huffman.cc}
-%\clearpage
-%\lstinputlisting[caption=arithmetic.cc]{../arithmetic.cc}
-%\clearpage
-%\lstinputlisting[caption=model.h]{../model.h}
-%\clearpage
-%\lstinputlisting[caption=model.cc]{../model.cc}
+\section{Source code}
+Files that are included but not listed here were downloaded from the course webpage and not modified.
+
+\lstinputlisting[caption=mpiblur.c]{../mpiblur.c}
+\clearpage
+\lstinputlisting[caption=mpiblurfilter.c]{../mpiblurfilter.c}
+\lstinputlisting[caption=mpiblurfilter.c]{../mpiblurfilter.h}
 \end{document}

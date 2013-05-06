@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <mpi.h>
+/*#include <VT.h>*/
 #include "ppmio.h"
 #include "mpiblurfilter.h"
 #include "gaussw.h"
@@ -24,16 +25,24 @@ int main (argc, argv)
   int radius, xsize, ysize, colmax;
   double w[MAX_RAD], start_time = 0, end_time, float_ops, run_time;
   char *src = 0, *l_src = 0;
+  
+  /*int statehandle = 1, ierr;*/
+
   MPI_Status status;
-  MPI_Request *request;
 
   MPI_Init (&argc, &argv);  /* starts MPI */
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);  /* get current process id */
   MPI_Comm_size (MPI_COMM_WORLD, &size);  /* get number of processes */
 
+  /* Used in traceanalyser to mark a section of the application.*/
+  /*VT_symdef(statehandle, "Blur", "Read file");*/
+
   /* Rank 0 reads file.*/
   if(rank == 0){
-    /* Allocate memory dynamically. (Had some problems with static allocation and huge image files.) */
+    /*VT_begin(statehandle);*/
+
+    /* Allocate memory dynamically.
+     * (Had some problems with static allocation and huge image files.) */
     src = malloc(sizeof(pixel)*MAX_PIXELS);
     if(!src){
       printf("Could not allocate memory, exiting");
@@ -48,7 +57,9 @@ int main (argc, argv)
     }
     radius = atoi(argv[1]);
     if((radius > MAX_RAD) || (radius < 1)) {
-      fprintf(stderr, "Radius (%d) must be greater than zero and less then %d\n", radius, MAX_RAD);
+      fprintf(stderr, 
+          "Radius (%d) must be greater than zero and less then %d\n",
+          radius, MAX_RAD);
       exit(1);
     }
 
@@ -61,6 +72,7 @@ int main (argc, argv)
       exit(1);
     }
     printf("Read image.\n");
+    /*VT_end(statehandle);*/
   }
 
   /* Start clock for timing of execution. */
@@ -87,13 +99,14 @@ int main (argc, argv)
       recvcounts[i] = (y-blockstart[i])*linelength;
     }
   }
-  //MPI_Bcast(blockstart, size+1, MPI_INTEGER, 0, MPI_COMM_WORLD);
-  /* blockstart[i] now contains starting line for data to be processed by rank i.
-   * blockstart[i+1] contains the line after the last line in data to be processed by rank i.*/
-  /* recvcounts[] and displs[] are used by MPI_Gatherv after processing. */
-
-  /* Allocate data for the request array to be able to wait for all send operations.*/
-  request = malloc(sizeof(MPI_Request)*(size-1));
+  /*MPI_Bcast(blockstart, size+1, MPI_INTEGER, 0, MPI_COMM_WORLD);*/
+  /* blockstart[i] now contains starting line for 
+   * data to be processed by rank i.
+   * 
+   * blockstart[i+1] contains the line after 
+   * the last line in data to be processed by rank i.*/
+  /* 
+   * recvcounts[] and displs[] are used by MPI_Gatherv after processing. */
 
   /* Send image data to all processes. */
   if(rank == 0){
@@ -103,7 +116,7 @@ int main (argc, argv)
     for(i = 1; i < size; ++i){
       datastart = src+max(0, blockstart[i]-overlapping_lines)*linelength;
       dataend = src+min(ysize, blockstart[i+1]+overlapping_lines)*linelength;
-      MPI_Isend(datastart, dataend-datastart, MPI_CHAR, i, 0, MPI_COMM_WORLD, &request[i-1]);
+      MPI_Send(datastart, dataend-datastart, MPI_CHAR, i, 0, MPI_COMM_WORLD);
     }
 
     /* Copy image data of rank 0 to local buffer */
@@ -115,30 +128,30 @@ int main (argc, argv)
   if(rank > 0){
     l_ysize = blockstart[rank+1] - blockstart[rank];
     l_src = malloc((l_ysize + overlapping_lines*2)*linelength);
-    MPI_Recv(l_src, (l_ysize + overlapping_lines*2)*linelength, MPI_CHAR, 0, 0, MPI_COMM_WORLD, &status);
+    MPI_Recv(l_src, (l_ysize + overlapping_lines*2)*linelength,
+        MPI_CHAR, 0, 0, MPI_COMM_WORLD, &status);
   }
 
   /* Generate coefficients for the filter*/
   get_gauss_weights(radius, w);
   
   /* Move image data pointer to where the processing should begin.*/
-  l_src += min(overlapping_lines, blockstart[rank])*linelength;
+  l_src += (min(overlapping_lines, blockstart[rank]))*linelength;
 
   if(rank == 0) printf("Running filter.\n");
 
   /* Run filter. */
-  blurfilter(l_src, xsize, ysize, blockstart[rank], blockstart[rank+1], w, radius);
+  blurfilter(l_src, xsize, ysize, blockstart[rank], 
+      blockstart[rank+1], w, radius);
 
-  /* Wait for all processes to complete the filtering before calling Gatherv().
-   * There could possibly be some writing to src before all data is sent if this is not done.*/
-  MPI_Barrier(MPI_COMM_WORLD);
   if(rank == 0){
     printf("All filtering is complete.\n");
   }
   /* Gather all data from the processes. */
-  MPI_Gatherv(l_src, recvcounts[rank], MPI_CHAR, src, recvcounts, displs, MPI_CHAR, 0, MPI_COMM_WORLD);
+  MPI_Gatherv(l_src, recvcounts[rank], MPI_CHAR, src,
+      recvcounts, displs, MPI_CHAR, 0, MPI_COMM_WORLD);
 
-  if(rank == 0){
+  if(rank == 1){
     end_time = MPI_Wtime();
     printf("Writing data to disk.\n");
     if(write_ppm (argv[3], xsize, ysize, (char *)src) != 0)
@@ -150,13 +163,6 @@ int main (argc, argv)
     /*printf("# floating point operations ~ %.0f\n", float_ops);*/
     printf("MFLOPS ~ %.2f\n", float_ops/(run_time*1000000));
   }
-  
-  free(l_src - min(overlapping_lines, blockstart[rank])*linelength);
-  free(blockstart);
-  free(recvcounts);
-  free(displs);
-  free(request);
-  free(src);
 
   MPI_Finalize();
   return 0;

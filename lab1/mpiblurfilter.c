@@ -9,7 +9,8 @@ Implementation of blurfilter function.
 #include "mpiblurfilter.h"
 #include "ppmio.h"
 
-void blurfilter(char* start, int xsize, int ysize, int ystart, int yend, double *w, int radius){
+void blurfilter(char* start, int xsize, int ysize, 
+    int ystart, int yend, double *w, int radius){
 
   int x,y, wi;
   double r,g,b,n, wc;
@@ -17,22 +18,22 @@ void blurfilter(char* start, int xsize, int ysize, int ystart, int yend, double 
   pixel *src_pos = (pixel*)start, *dst_pos = dst, *tpos;
 
   for (y = ystart; y<yend; ++y) {
-    for (x = 0; x<xsize; ++x) {
+    for (x=0; x<xsize; ++x) {
       r = w[0] * src_pos->r;
       g = w[0] * src_pos->g;
       b = w[0] * src_pos->b;
       n = w[0];
       for ( wi=1; wi <= radius; wi++) {
         wc = w[wi];
+        tpos = src_pos-wi*xsize;
         if(y-wi >= 0) {
-          tpos = src_pos-wi*xsize;
           r += wc * tpos->r;
           g += wc * tpos->g;
           b += wc * tpos->b;
           n += wc;
         }
+        tpos = src_pos+wi*xsize;
         if(y+wi < ysize) {
-          tpos = src_pos+wi*xsize;
           r += wc * tpos->r;
           g += wc * tpos->g;
           b += wc * tpos->b;
@@ -56,15 +57,15 @@ void blurfilter(char* start, int xsize, int ysize, int ystart, int yend, double 
       n = w[0];
       for ( wi=1; wi <= radius; wi++) {
         wc = w[wi];
+        tpos = src_pos-wi;
         if(x-wi >= 0) {
-          tpos = src_pos-wi;
           r += wc * tpos->r;
           g += wc * tpos->g;
           b += wc * tpos->b;
           n += wc;
         }
+        tpos = src_pos+wi;
         if(x+wi < xsize) {
-          tpos = src_pos+wi;
           r += wc * tpos->r;
           g += wc * tpos->g;
           b += wc * tpos->b;
@@ -78,7 +79,6 @@ void blurfilter(char* start, int xsize, int ysize, int ystart, int yend, double 
       ++dst_pos;
     }
   }
-  free(dst);
   return;
 }
 
