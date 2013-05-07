@@ -14,8 +14,10 @@ int main (int argc, char ** argv) {
   int radius, num_threads;
   int xsize, ysize, colmax;
   int y, x, i;
-  /* Allocating memory dynamically since there was segfaulting when this was done statically.*/
-  pixel *src = malloc(sizeof(pixel)*MAX_PIXELS), *dst = malloc(sizeof(pixel)*MAX_PIXELS);
+  /* Allocating memory dynamically since there was 
+   * segfaulting when this was done statically.*/
+  pixel *src = malloc(sizeof(pixel)*MAX_PIXELS),
+        *dst = malloc(sizeof(pixel)*MAX_PIXELS);
   struct timespec stime, etime;
   struct blurfilter_attr threads_params[MAX_THREADS];
   unsigned long int thread_ids[MAX_THREADS];
@@ -36,7 +38,9 @@ int main (int argc, char ** argv) {
   radius = atoi(argv[2]);
   num_threads = atoi(argv[1]);
   if((radius > MAX_RAD) || (radius < 1)) {
-    fprintf(stderr, "Radius (%d) must be greater than zero and less then %d\n", radius, MAX_RAD);
+    fprintf(stderr, 
+        "Radius (%d) must be greater than zero and less then %d\n", 
+        radius, MAX_RAD);
     exit(1);
   }
 
@@ -74,7 +78,8 @@ int main (int argc, char ** argv) {
     threads_params[i].stopy = y;
     
     /* Start thread */
-    pthread_create(&thread_ids[i], NULL, blurfilter, (void*) &threads_params[i]);
+    pthread_create(&thread_ids[i], NULL, 
+        blurfilter, (void*) &threads_params[i]);
   }
   /* Wait for all threads to finish the first pass. */
   for(i = 0; i < num_threads; ++i){
@@ -97,7 +102,8 @@ int main (int argc, char ** argv) {
     if(i < xsize%num_threads) ++x;
     threads_params[i].stopy = x;
 
-    pthread_create(&thread_ids[i], NULL, blurfilter, (void*) &threads_params[i]);
+    pthread_create(&thread_ids[i], NULL, 
+        blurfilter, (void*) &threads_params[i]);
   }
   /* Wait for all threads to terminate.*/
   for(i = 0; i < num_threads; ++i){
@@ -114,13 +120,11 @@ int main (int argc, char ** argv) {
   if(write_ppm (argv[4], xsize, ysize, (char *)src) != 0)
     exit(1);
 
-  run_time = (etime.tv_sec  - stime.tv_sec) + 1e-9*(etime.tv_nsec  - stime.tv_nsec);
+  run_time = (etime.tv_sec  - stime.tv_sec) +
+    1e-9*(etime.tv_nsec  - stime.tv_nsec);
   float_ops = (double)xsize*ysize*(14*radius+7)*2;
   printf("Filtering took: %g secs\n", run_time);
-  /*printf("# floating point operations ~ %.0f\n", float_ops);*/
   printf("MFLOPS ~ %.2f\n", float_ops/(run_time*1000000));
-
-
 
   free(src);
   free(dst);

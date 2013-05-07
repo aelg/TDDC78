@@ -48,14 +48,15 @@ title('Averaging filter run on 8 cores');
 
 
 %./matlab_format.py slurm-521808.out 1_thread
-im1_1_thread = [0.0470434 0.0796472 0.333709 0.631312];
+im1_1_thread = [0.0999426 0.177613 0.791399 1.51316];
 im1_1_thread_radius = [5 10 50 100];
-im2_1_thread = [0.095533 0.161768 0.684766 1.31056];
+im2_1_thread = [0.202774 0.360329 1.62 3.12221];
 im2_1_thread_radius = [5 10 50 100];
-im3_1_thread = [0.176316 0.297651 1.25851 2.43034];
+im3_1_thread = [0.378466 0.670507 2.98633 5.77186];
 im3_1_thread_radius = [5 10 50 100];
-im4_1_thread = [0.826119 1.39829 5.9504 11.6048];
+im4_1_thread = [1.83156 3.19704 14.1466 27.5185];
 im4_1_thread_radius = [5 10 50 100];
+
 figure(4)
 plot(im1_1_thread_radius, im1_1_thread, '-x', im2_1_thread_radius, im2_1_thread, '-x', im3_1_thread_radius, im3_1_thread, '-x', im4_1_thread_radius, im4_1_thread, '-x');
 legend('im1', 'im2', 'im3', 'im4', 'Location', 'NorthWest');
@@ -80,14 +81,14 @@ xlabel('Radius');
 ylabel('Run time');
 title('Averaging filter run with 2 threads');
 
-%./matlab_format.py slurm-521815.out 4_threads
-im1_4_threads = [0.0140645 0.0225147 0.0872207 0.161822];
+%./matlab_format.py slurm-607947.out 4_threads
+im1_4_threads = [0.0136005 0.0224999 0.0876083 0.159761];
 im1_4_threads_radius = [5 10 50 100];
-im2_4_threads = [0.0274257 0.0445793 0.17969 0.336393];
+im2_4_threads = [0.0276902 0.0447808 0.178032 0.336251];
 im2_4_threads_radius = [5 10 50 100];
-im3_4_threads = [0.0508857 0.0817186 0.324281 0.616372];
+im3_4_threads = [0.0515806 0.0838421 0.323844 0.612138];
 im3_4_threads_radius = [5 10 50 100];
-im4_4_threads = [0.220054 0.360046 1.51232 2.94226];
+im4_4_threads = [0.218762 0.365464 1.51325 2.89252];
 im4_4_threads_radius = [5 10 50 100];
 figure(5);
 plot(im1_4_threads_radius, im1_4_threads, '-x', im2_4_threads_radius, im2_4_threads, '-x', im3_4_threads_radius, im3_4_threads, '-x', im4_4_threads_radius, im4_4_threads, '-x');
@@ -96,14 +97,14 @@ xlabel('Radius');
 ylabel('Run time');
 title('Averaging filter run with 4 threads');
 
-%./matlab_format.py slurm-521817.out 8_threads
-im1_8_threads = [0.0104665 0.0146436 0.0481916 0.0860901];
+%./matlab_format.py slurm-607962.out 8_threads
+im1_8_threads = [0.0101281 0.0140393 0.0472647 0.0864246];
 im1_8_threads_radius = [5 10 50 100];
-im2_8_threads = [0.0199493 0.0295607 0.0984862 0.183738];
+im2_8_threads = [0.0202718 0.0283178 0.0971861 0.177079];
 im2_8_threads_radius = [5 10 50 100];
-im3_8_threads = [0.0363348 0.0511522 0.178057 0.330515];
+im3_8_threads = [0.0358152 0.0561653 0.177776 0.332303];
 im3_8_threads_radius = [5 10 50 100];
-im4_8_threads = [0.127996 0.206565 0.79577 1.52823];
+im4_8_threads = [0.128664 0.204126 0.793029 1.51768];
 im4_8_threads_radius = [5 10 50 100];
 figure(6);
 plot(im1_8_threads_radius, im1_8_threads, '-x', im2_8_threads_radius, im2_8_threads, '-x', im3_8_threads_radius, im3_8_threads, '-x', im4_8_threads_radius, im4_8_threads, '-x');
@@ -112,14 +113,14 @@ xlabel('Radius');
 ylabel('Run time');
 title('Averaging filter run with 8 threads');
 
-%./matlab_format.py slurm-521819.out 16_threads
-im1_16_threads = [0.0114095 0.012666 0.0295881 0.0505437];
+%./matlab_format.py slurm-607964.out 16_threads
+im1_16_threads = [0.0122751 0.0134594 0.0301017 0.0509868];
 im1_16_threads_radius = [5 10 50 100];
-im2_16_threads = [0.0220951 0.026521 0.0615479 0.10425];
+im2_16_threads = [0.0209276 0.0264191 0.0608438 0.102861];
 im2_16_threads_radius = [5 10 50 100];
-im3_16_threads = [0.0428284 0.0474971 0.110336 0.191794];
+im3_16_threads = [0.0393777 0.0473222 0.110406 0.18972];
 im3_16_threads_radius = [5 10 50 100];
-im4_16_threads = [0.104575 0.143931 0.458426 0.851565];
+im4_16_threads = [0.105744 0.144645 0.458281 0.844463];
 im4_16_threads_radius = [5 10 50 100];
 figure(7);
 plot(im1_16_threads_radius, im1_16_threads, '-x', im2_16_threads_radius, im2_16_threads, '-x', im3_16_threads_radius, im3_16_threads, '-x', im4_16_threads_radius, im4_16_threads, '-x');
@@ -179,8 +180,15 @@ title('Threshold filter with pthreads on different images');
 
 
 %%
-plot(im, im3_32_cores, '-x', im, im2_16_cores, '-x', im, im1_8cores, '-x');
+plot(im3_32_cores_radius, im3_32_cores, '-x', im2_16_cores_radius, im2_16_cores, '-x', im1_8_cores_radius, im1_8_cores, '-x');
 legend('im3 32 cores', 'im2 16 cores', 'im1 8 cores', 'Location', 'NorthWest');
 xlabel('Radius');
 ylabel('Run time');
 title('Changing computional complexity and number of processes');
+
+%%
+plot(im3_16_threads_radius, im3_16_threads, '-x', im2_8_threads_radius, im2_8_threads, '-x', im1_4_threads_radius, im1_4_threads, '-x');
+legend('im3 16 cores', 'im2 8 cores', 'im1 4 cores', 'Location', 'NorthWest');
+xlabel('Radius');
+ylabel('Run time');
+title('Changing computional complexity and number of threads');
