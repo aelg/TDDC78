@@ -157,7 +157,7 @@ The first step is determining the average pixel intensity by adding the RGB valu
 
 Because there is no dependency between pixels during either of the two calculations the work can easily be divided between an arbitrary amount of processors by giving them an as equal share as possible with no concern for locality. 
 
-The program calculates the work share of each processor and then distributes the splitted source image by using the MPI\_Scatter command. The processors then calculate the RGB sum of their share and the total sum is then calculated and redistributed for the second calculation by using the MPI\_Allreduce command.
+The program calculates the work share of each processor and then creates structs containing this information for each individual processor. The threads are then started and the processors then calculate the RGB sum of their share and the total sum is then calculated by each process adding their sum to a shared variable using a mutex lock to ensure correctness. The threads are then joined and created again for the second calculation and then finally joined again at the end.
 
 \paragraph\noindent\textbf{Overview of the parallel program}
 
@@ -165,30 +165,28 @@ The program calculates the work share of each processor and then distributes the
 \renewcommand{\labelitemi}{$\bullet$}
 \item Load image from disk on root processor
 \item Calculate work shares
-\item Use MPI\_Scatter to distribute parts of the image
-\item Calculate average RGB sum in parallel
-\item Sum the results and redistributed the total sum by using MPI\_Allreduce
-\item Calculate output image in parallel
-\item Gather the result to the root processor by using MPI\_Gather
+\item Start new threads to calculate average RGB sum in parallel
+\item Sum the results into a global variable.
+\item Start new threads to Calculate output image in parallel
+\item Wait for threads to finish
 \item Root process writes image to disk
 \end{itemize}
 
 \subsection{Result and graphs}
-In figure \ref{runtime_vs_cores} we can see that the largest image scales well to 4 cores, halving the runtime, but then barely sees any decrease in runtime when increasing the amount of cores to 8 and finally sees a slight increase in runtime for more cores than that. Because the work to be done is small compared to the blur filter but the messaging is similar we expect that this program should scale less well to many cores. It appears that the work load is in fact so small that there's quickly no gain at all. This becomes more pronounced as the problem size grows smaller to the point where the smallest image never sees any gain in increasing the amount of cores past 2.
+Using pthreads which can share memory a big improvement over the mpi implementation is expected. As we can see in figure \ref{thresc_123} and \ref{thresc_4} this is also the case. We have beautiful scaling that is nearly linear in the amount of processors when the problem size is big and gradually less so for smaller input. For \emph{im1.ppm} the work load is so small that it seems not to be worth threading, but when the run time is less than a millisecond it is hard to tell.
 
-For a single core we see that increasing the problem size will linearly increase run time. The size of im2 is very slightly more than twice that of im1 and the run time is doubled. Similarily im3 is slightly less than twice the size of im2 but and has the run time doubled again. The size of im4 is about $4.7$ times that of im3 and the run time is very close to $4.7$ times that of im3. If we try the same for 4 cores we see that it holds up between im2, im3 and im4 but not so much going from im1 to im2 where the communication starts taking too much time.
-
-This observation about the graph is also corroborated by table \ref{mpixelspersecond} which shows the number of pixels in the input image divided by run time and is proportional to MFlops. The columns show that keeping the amount of cores constant will give linear increase in run time up to a point where too many cores creates too much overhead, and this point is lower for smaller problems. If we look at the rows we can see that increasing the amount of cores will solve the problem faster up to a point where there's too much overhead.
-
-%redo this paragraph
-For the scaled speed up we see that the run time stays the same for im1 on 1 core as im2 on 4 cores which means that we gain $50\%$ run time per extra core. This holds up as we move to im3 where doubling the problem size and amount of cores results in almost double the run time. For im4 we double the amount of cores again but the problem size is $4.7$ times larger and the run time is now $3.3$ times higher which gives an increase per core of $70\%$.
+The run time is also nearly linear in problem size for sufficiently large problems which means that run times when both problem size and thread count is proportionally increased are almost the same. We see some straight lines on the y-axis of figure \ref{thresc_123} that show this.
 
 \begin{figure}[!h]
-  \caption{Run times related to number of cores for the different images.}
-  \label{runtime_vs_cores}
-  \includegraphics[scale=0.9]{../plots/runtimevscoresthres.png}
+  \caption{Run times related to number of cores for images 1, 2 and 3}
+  \label{thresc_123}
+  \includegraphics[scale=0.9]{../plots/pthread_im123.png}
 \end{figure}
-
+\begin{figure}[!h]
+  \caption{Run times related to number of cores for image 4.}
+  \label{thresc_4}
+  \includegraphics[scale=0.9]{../plots/pthread_im4.png}
+\end{figure}
 
 \begin{table}[h!]
   \label{mpixelspersecond}
@@ -228,9 +226,9 @@ For the scaled speed up we see that the run time stays the same for im1 on 1 cor
 \section{Source code}
 Files that are included but not listed here were downloaded from the course webpage and not modified.
 
-\lstinputlisting[caption=mpiblur.c]{../blurmain.c}
+\lstinputlisting[caption=blurmain.c]{../blurmain.c}
 \clearpage
-\lstinputlisting[caption=mpiblurfilter.c]{../blurfilter.c}
+\lstinputlisting[caption=blurfilter.c]{../blurfilter.c}
 \clearpage
-\lstinputlisting[caption=mpiblurfilter.c]{../blurfilter.h}
+\lstinputlisting[caption=blurfilter.c]{../blurfilter.h}
 \end{document}
