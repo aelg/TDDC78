@@ -171,7 +171,7 @@ The first step is determining the average pixel intensity by adding the RGB valu
 \item Write image to disk
 \end{itemize}
 
-Because there is no dependency between pixels during either of the two calculations the work can easily be divided between an arbitrary amount of processors by giving them an as equal share as possible with no concern for locality. 
+Because there is no dependency between pixels during either of the two calculations the work can easily be divided between an arbitrary amount of processors by giving them an as equal share as possible and with no locality concerns regarding reducing communication. 
 
 The program calculates the work share of each processor and then distributes the splitted source image by using the MPI\_Scatter command. The processors then calculate the RGB sum of their share and the total sum is then calculated and redistributed for the second calculation by using the MPI\_Allreduce command.
 
@@ -192,12 +192,11 @@ The program calculates the work share of each processor and then distributes the
 \subsection{Result and graphs}
 In figure \ref{runtime_vs_cores} we can see that the largest image scales well to 4 cores, halving the runtime, but then barely sees any decrease in runtime when increasing the amount of cores to 8 and finally sees a slight increase in runtime for more cores than that. Because the work to be done is small compared to the blur filter but the messaging is similar we expect that this program should scale less well to many cores. It appears that the work load is in fact so small that there's quickly no gain at all. This becomes more pronounced as the problem size grows smaller to the point where the smallest image never sees any gain in increasing the amount of cores past 2.
 
-For a single core we see that increasing the problem size will linearly increase run time. The size of im2 is very slightly more than twice that of im1 and the run time is doubled. Similarily im3 is slightly less than twice the size of im2 but and has the run time doubled again. The size of im4 is about $4.7$ times that of im3 and the run time is very close to $4.7$ times that of im3. If we try the same for 4 cores we see that it holds up between im2, im3 and im4 but not so much going from im1 to im2 where the communication starts taking too much time.
+For a single core we see that increasing the problem size will linearly increase run time. The size of \emph{im2.ppm} is very slightly more than twice that of \emph{im1.ppm} and the run time is doubled. Similarily \emph{im3.ppm} is slightly less than twice the size of \emph{im2.ppm} but and has the run time doubled again. The size of \emph{im4.ppm} is about $4.7$ times that of \emph{im3.ppm} and the run time is very close to $4.7$ times that of \emph{im3.ppm}. If we try the same for 4 cores we see that it holds up between the second, third and fourth image but not so much going from the first to the second image where the communication starts taking too much time.
 
 This observation about the graph is also corroborated by table \ref{mpixelspersecond} which shows the number of pixels in the input image divided by run time and is proportional to MFlops. The columns show that keeping the amount of cores constant will give linear increase in run time up to a point where too many cores creates too much overhead, and this point is lower for smaller problems. If we look at the rows we can see that increasing the amount of cores will solve the problem faster up to a point where there's too much overhead.
 
-%redo this paragraph
-For the scaled speed up we see that the run time stays the same for im1 on 1 core as im2 on 4 cores which means that we gain $50\%$ run time per extra core. This holds up as we move to im3 where doubling the problem size and amount of cores results in almost double the run time. For im4 we double the amount of cores again but the problem size is $4.7$ times larger and the run time is now $3.3$ times higher which gives an increase per core of $70\%$.
+For the scaled speed up we can look at \emph{im1.ppm}, \emph{im2.ppm} and \emph{im3.ppm} which are roughly doubling in size from one image to the next. In figure \ref{runtime_vs_cores} we can compare \emph{im1.ppm} at 4 cores with \emph{im2.ppm} at 8 cores and \emph{im3.ppm} at 16 cores. Ideally the run times should then be the same for these points but because the solution is not scaling well with cores we see that the run time in the first step is doubled and then after that tripled again in the second step.
 
 \begin{figure}[!h]
   \caption{Run times related to number of cores for the different images.}
@@ -211,12 +210,12 @@ For the scaled speed up we see that the run time stays the same for im1 on 1 cor
   \caption{$MPixels/Second$ when running with different amount of threads and on different data.}
   \begin{tabular}[h]{|l|l|l|l|l|l|}
     \hline
-                  & 1     & 2     & 4     & 8     & 16\\
+                      & 1      & 2      & 4      & 8      & 16\\
     \hline
-    im1           & 135.41 & 183.31 & 184.94 & 68.89  & 21.77\\ 
-    im2           & 150.01 & 209.17 & 274.71 & 201.65 & 63.15\\ 
-    im3           & 146.25 & 209.72 & 274.44 & 275.62 & 138.23\\ 
-    im4           & 145.07 & 212.56 & 286.41 & 332.90 & 297.42\\
+    im1.ppm           & 135.41 & 183.31 & 184.94 & 68.89  & 21.77\\ 
+    im2.ppm           & 150.01 & 209.17 & 274.71 & 201.65 & 63.15\\ 
+    im3.ppm           & 146.25 & 209.72 & 274.44 & 275.62 & 138.23\\ 
+    im4.ppm           & 145.07 & 212.56 & 286.41 & 332.90 & 297.42\\
     \hline
   \end{tabular}
 \end{table}
@@ -248,4 +247,6 @@ Files that are included but not listed here were downloaded from the course webp
 \clearpage
 \lstinputlisting[caption=mpiblurfilter.c]{../mpiblurfilter.c}
 \lstinputlisting[caption=mpiblurfilter.c]{../mpiblurfilter.h}
+\clearpage
+\lstinputlisting[caption=mpithreshold.c]{../mpithreshold.c}
 \end{document}
