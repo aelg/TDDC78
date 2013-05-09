@@ -177,6 +177,8 @@ Using pthreads which can share memory a big improvement over the mpi implementat
 
 The run time is also nearly linear in problem size for sufficiently large problems which means that run times when both problem size and thread count is proportionally increased are almost the same. We see some straight lines on the y-axis of figure \ref{thresc_123} that show this.
 
+Table \ref{mpixelspersecond2} shows $MPixels/Second$ which is proportional to $flop/s$ of the same set of trial runs as figure \ref{thresc_123} and \ref{thresc_4}.
+
 \begin{figure}[!h]
   \caption{Run times related to number of cores for images 1, 2 and 3}
   \label{thresc_123}
@@ -189,16 +191,16 @@ The run time is also nearly linear in problem size for sufficiently large proble
 \end{figure}
 
 \begin{table}[h!]
-  \label{mpixelspersecond}
+  \label{mpixelspersecond2}
   \caption{$MPixels/Second$ when running with different amount of threads and on different data.}
   \begin{tabular}[h]{|l|l|l|l|l|l|}
     \hline
-                  & 1     & 2     & 4     & 8     & 16\\
+                  & 1     & 2     & 4        & 8       & 16\\
     \hline
-    im1           & 135.41 & 183.31 & 184.94 & 68.89  & 21.77\\ 
-    im2           & 150.01 & 209.17 & 274.71 & 201.65 & 63.15\\ 
-    im3           & 146.25 & 209.72 & 274.44 & 275.62 & 138.23\\ 
-    im4           & 145.07 & 212.56 & 286.41 & 332.90 & 297.42\\
+    im1           & 191.71 & 399.44 & 636.43 & 914.69  & 691.86\\ 
+    im2           & 224.86 & 425.96 & 767.79 & 868.39  & 1174.37\\ 
+    im3           & 210.62 & 416.93 & 783.66 & 1367.27 & 1626.35\\ 
+    im4           & 221.41 & 443.58 & 879.46 & 1654.68 & 2697.28\\
     \hline
   \end{tabular}
 \end{table}
@@ -231,4 +233,8 @@ Files that are included but not listed here were downloaded from the course webp
 \lstinputlisting[caption=blurfilter.c]{../blurfilter.c}
 \clearpage
 \lstinputlisting[caption=blurfilter.c]{../blurfilter.h}
+\clearpage
+\lstinputlisting[caption=thresmain.c]{../thresmain.c}
+\lstinputlisting[caption=thresfilter.h]{../thresfilter.h}
+\lstinputlisting[caption=thresfilter.c]{../thresfilter.c}
 \end{document}
