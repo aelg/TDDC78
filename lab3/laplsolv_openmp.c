@@ -38,13 +38,13 @@ int const maxiter = 1000;
 int main(){
   double tol = 1.0e-3;
   double (*T)[SIZE] = malloc(N*sizeof(double)/sizeof(char));
-  double *Ttemp = malloc(n*sizeof(double)/sizeof(char));
-  double *prev;
+  double *prev = malloc(n*sizeof(double)/sizeof(char));
   double *ptr, *end_ptr;
   double error;
   double execTime;
   struct timespec tStart, tEnd;
-  int k, i, j, rank, numThreads;
+  int k, i, j;
+  int rank, numThreads;
 
   /* Initialize */
   ptr = (double*)T;
@@ -63,27 +63,38 @@ int main(){
   /* Get time */
   clock_gettime(CLOCK_REALTIME, &tStart);
 
-  /* Run calculation */
-  error = 1e9;
-  for(k = 0; k < maxiter && error >= tol; ++k){
-    error = 0;
-    for(i = 1; i < n-1; ++i){
-#pragma omp parallel reduction(max :error), private(i, j, stop)
-      {
-        int stop;
-        rank = omp_get_thread_num();
-        numThreads = omp_get_num_threads();
-        prev = malloc(numThreads*sizeof(int)/sizeof(char));
-        stop = 1+(rank+1)*n/NumThreads;
-        for(j = 1+rank*n/numThreads; j < stop-2; ++j){
-          prev = T[i][j];
-          T[i][j] = (T[i-1][j] + T[i+1][j] + T[i][j+1] + T[i][j-1])/4.0;
-          error = max(error, fabs(T[i][j] - prev));
-          tmp = prev;
-        }
-        free(prev);
+#pragma omp parallel shared(prev, error, tol, T, k) private(i,j, rank)
+  {
+    /* Run calculation */
+    rank = omp_get_thread_num();
+    numThreads = omp_get_num_threads();
+    if(rank == 0) printf("Running with %d threads.\n", numThreads);
+    error = 1e9;
+    for(k = 0; k < maxiter && error >= tol;){
+#pragma omp single
+        ++k;
+      error = 0;
+#pragma omp for schedule(static)
+      for(j = 0; j < n; ++j){
+        /*printf("rank: %d j: %d\n", rank, j);*/
+        prev[j] = T[0][j];
       }
+      for(i = 1; i < n-1; ++i){
+#pragma omp for reduction(max : error) private(j) schedule(static)
+        for(j = 1; j < n-1; ++j){
+          double tmp = prev[j];
+          prev[j] = (T[i-1][j] + T[i+1][j] + T[i][j+1] + T[i][j-1])/4.0;
+          T[i-1][j] = tmp;
+          error = max(error, fabs(T[i][j] - prev[j]));
+        }
+      }
+#pragma omp for schedule(static)
+      for(j = 1; j < n-1; ++j){
+        T[n-2][j] = prev[j];
+      }
+#pragma omp flush
     }
+    /*fprintf(stderr, "error: %f tol: %f k: %d maxiter: %d rank: %d\n", error, tol, k, maxiter, rank);*/
   }
 
   /* Get time */

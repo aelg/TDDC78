@@ -5,7 +5,7 @@ LFLAGS= -lrt -lm
 all: laplsolv laplsolv_fortran laplsolv_openmp
 
 clean:
-	-$(RM) *.o laplsolv
+	-$(RM) *.o laplsolv laplsolv_openmp laplsolv_fortran
 
 laplsolv: laplsolv.c
 	gcc -o laplsolv $(CFLAGS) $(LFLAGS) laplsolv.c

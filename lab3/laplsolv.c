@@ -37,7 +37,7 @@ int const maxiter = 1000;
 int main(){
   double tol = 1.0e-3;
   double (*T)[SIZE] = malloc(N*sizeof(double)/sizeof(char));
-  double (*Ttemp)[SIZE] = malloc(N*sizeof(double)/sizeof(char));
+  double *prev = malloc(n*sizeof(double)/sizeof(char));
   double *ptr, *end_ptr;
   double error;
   double execTime;
@@ -51,12 +51,12 @@ int main(){
       *ptr = 0.0;
   }
   for(i = 0; i < n; ++i)
-    Ttemp[i][0] = 1.0;
+    T[i][0] = 1.0;
   for(i = 0; i < n; ++i)
-    Ttemp[i][n-1] = 1.0;
+    T[i][n-1] = 1.0;
   for(i = 0; i < n; ++i)
-    Ttemp[n-1][i] = 2.0;
-  /*print_res(Ttemp);*/
+    T[n-1][i] = 2.0;
+  /*print_res(T);*/
 
   /* Get time */
   clock_gettime(CLOCK_REALTIME, &tStart);
@@ -65,17 +65,20 @@ int main(){
   error = 1e9;
   for(k = 0; k < maxiter && error > tol; ++k){
     error = 0;
-    memcpy(T, Ttemp, N*sizeof(double)/sizeof(char));
+    memcpy(prev, T[0], n*sizeof(double)/sizeof(char));
 
     for(i = 1; i < n-1; ++i){
       for(j = 1; j < n-1; ++j){
-
-        Ttemp[i][j] = (T[i-1][j] + T[i+1][j] + T[i][j+1] + T[i][j-1])/4.0;
-        error = max(error, fabs(T[i][j] - Ttemp[i][j]));
+        double tmp = prev[j];
+        prev[j] = (T[i-1][j] + T[i+1][j] + T[i][j+1] + T[i][j-1])/4.0;
+        T[i-1][j] = tmp;
+        error = max(error, fabs(T[i][j] - prev[j]));
       }
     }
+    //printf("error: %f\n", error);
+
+    memcpy(T[n-2], prev, n*sizeof(double)/sizeof(char));
   }
-  memcpy(T, Ttemp, N*sizeof(double)/sizeof(char));
 
   /* Get time */
   clock_gettime(CLOCK_REALTIME, &tEnd);
@@ -84,7 +87,7 @@ int main(){
   execTime = (tEnd.tv_sec  - tStart.tv_sec) +
     1e-9*(tEnd.tv_nsec  - tStart.tv_nsec);
   printf("Time: %f   Number of iterations: %d\n", execTime, k);
-  printf("Temperature of element T(1,1) = %.17f\n", T[1][1]);
+  printf("Temperature of element T(1,1) = %.17f\n", T[1][0]);
 
   /* Save to file. */
   save_res("result_c.dat", T);
