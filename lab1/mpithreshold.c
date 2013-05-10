@@ -16,7 +16,8 @@ int main (argc, argv)
   int argc;
   char *argv[];
 {
-  int rank, nprocs, i, blocksize, xsize, ysize, colmax, *recvcounts, *displs, num_pixels;
+  int rank, nprocs, i, blocksize, xsize, ysize, 
+      colmax, *recvcounts, *displs, num_pixels;
   double sum = 0, average = 0;
   double start_time = 0, end_time, run_time;
   unsigned char *src = 0, *l_src = 0;
@@ -29,7 +30,8 @@ int main (argc, argv)
 
   /* Rank 0 reads file.*/
   if(rank == 0){
-    /* Allocate memory dynamically. (Had some problems with static allocation and huge image files.) */
+    /* Allocate memory dynamically. 
+     * (Had some problems with static allocation and huge image files.) */
     src = malloc(3*MAX_PIXELS);
     if(!src){
       printf("Could not allocate memory, exiting");
@@ -74,7 +76,8 @@ int main (argc, argv)
   /* Allocate local buffer. */
   l_src = malloc(recvcounts[rank]);
   /* Send image data to all processes. */
-  MPI_Scatterv(src, recvcounts, displs, MPI_UNSIGNED_CHAR, l_src, recvcounts[rank], MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+  MPI_Scatterv(src, recvcounts, displs, MPI_UNSIGNED_CHAR, 
+      l_src, recvcounts[rank], MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
 
   if(rank == 0) printf("Running filter.\n");
@@ -103,7 +106,8 @@ int main (argc, argv)
   }
 
   /* Gather all data from the processes. */
-  MPI_Gatherv(l_src, recvcounts[rank], MPI_UNSIGNED_CHAR, src, recvcounts, displs, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
+  MPI_Gatherv(l_src, recvcounts[rank], MPI_UNSIGNED_CHAR, 
+      src, recvcounts, displs, MPI_UNSIGNED_CHAR, 0, MPI_COMM_WORLD);
 
   if(rank == 0){
     end_time = MPI_Wtime();

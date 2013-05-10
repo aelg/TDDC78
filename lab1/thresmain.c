@@ -68,7 +68,8 @@ int main (int argc, char ** argv) {
 
   /* calculate sum with threads */
   for (i = 0; i < num_threads; ++i) {
-    pthread_create(&thread_ids[i],NULL,thresfiltersum,(void*) &threads_params[i]);
+    pthread_create(&thread_ids[i],NULL,
+        thresfiltersum,(void*) &threads_params[i]);
   }
 
 
@@ -84,7 +85,8 @@ int main (int argc, char ** argv) {
   printf("First pass done.\nStarting second pass.\n");
   /* calculate output image with threads */
   for (i = 0; i < num_threads; ++i) {
-    pthread_create(&thread_ids[i],NULL,thresfilteravg,(void*) &threads_params[i]);
+    pthread_create(&thread_ids[i],NULL,
+        thresfilteravg,(void*) &threads_params[i]);
   }
 
   /* wait for threads to finish */
@@ -103,7 +105,8 @@ int main (int argc, char ** argv) {
   if(write_ppm (argv[3], xsize, ysize, (char *)src) != 0)
     exit(1);
 
-  run_time = (etime.tv_sec  - stime.tv_sec) + 1e-9*(etime.tv_nsec  - stime.tv_nsec);
+  run_time = (etime.tv_sec  - stime.tv_sec) 
+    + 1e-9*(etime.tv_nsec  - stime.tv_nsec);
   num_pixels = (double)xsize*ysize;
   printf("Filtering took: %g secs\n", run_time);
   /*printf("# floating point operations ~ %.0f\n", float_ops);*/

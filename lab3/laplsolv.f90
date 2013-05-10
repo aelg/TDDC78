@@ -9,7 +9,7 @@ program laplsolv
   double precision,parameter          :: tol=1.0E-3
   double precision,dimension(0:n+1,0:n+1) :: T
   double precision,dimension(n)       :: tmp1,tmp2
-  double precision                    :: error,x
+  double precision                    :: error
   real                                :: t1,t0
   integer                             :: i,j,k
   character(len=20)                   :: str
