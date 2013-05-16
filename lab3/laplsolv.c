@@ -75,7 +75,7 @@ int main(){
         error = max(error, fabs(T[i][j] - prev[j]));
       }
     }
-    /*printf("error: %f\n", error);*/
+    //printf("error: %f\n", error);
 
     memcpy(T[n-2], prev, n*sizeof(double)/sizeof(char));
   }

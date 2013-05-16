@@ -6,7 +6,7 @@
 #include <omp.h>
 #include <inttypes.h>
 
-#define SIZE 4002
+#define SIZE 10002
 #define MAX_THREADS 16
 
 inline double max(double a, double b){return ((a < b)?b:a);}
@@ -52,6 +52,7 @@ int main(){
   int k, i, j;
   int rank, numThreads;
   int startline, endline;
+  int glob_num_threads;
 
   /* Initialize */
   ptr = (double*)T;
@@ -70,14 +71,20 @@ int main(){
   tStart = omp_get_wtime();
 
   glob_error = 1;
-#pragma omp parallel shared(tol, T, k, glob_error) private(i,j, rank, numThreads, error, startline, endline)
+#pragma omp parallel shared(tol, T, k, glob_error) private(i,j, rank, error, startline, endline) reduction(min : numThreads)
   {
-    /* Run calculation */
+    /* Divide work between threads.*/
     rank = omp_get_thread_num();
     numThreads = omp_get_num_threads();
-    if(rank == 0) printf("Running with %d threads.\n", numThreads);
+    if(rank == 0){
+      printf("Running with %d threads.\n", numThreads);
+      glob_num_threads = numThreads;
+    }
     startline = (rank*n1)/numThreads;
     endline = ((rank+1)*n1)/numThreads;
+    /* Some ugly stuff to set end end start correct.
+     * The last region don't need to use a saved line for the last run.
+     * Instead it runs the standard loop for the last line too, as this is never updated.*/
     if(rank == 0) ++startline;
     if(endline == n1) ++endline;
     for(k = 0; k < maxiter && glob_error;){
@@ -89,9 +96,9 @@ int main(){
       error = 0;
       glob_error = 0;
 
+      /* Save data that are needed later.*/
       memcpy(prevl[rank], T[startline-1], n*sizeof(double)/sizeof(char));
       memcpy(prevf[rank], T[startline], n*sizeof(double)/sizeof(char));
-      //#pragma omp for firstprivate(firstLine) private(i,j) schedule(static) reduction(|| : error)
 #pragma omp barrier
       for(i = startline; i < endline-1; ++i){
         for(j = 1; j < n1; ++j){
@@ -99,37 +106,37 @@ int main(){
           prevl[rank][j] = (T[i-1][j] + T[i+1][j] + T[i][j+1] + T[i][j-1])/4.0;
           T[i-1][j] = tmp;
 
-          /*Tried some different approaches for error calculation, this seems to be the fastest.*/
-          error = error || fabs(T[i][j] - prevl[rank][j]) > tol;
-          /*if(error && first) printf("Error1 in thread: %d %d %d %f\n", rank, i, j, fabs(T[i][j] - prevl[rank][j])), first = 0;*/
-          /*if(error < fabs(T[i][j] - prevl[rank][j])) printf("%d %d %f %f\n", i, j, T[i][j], prevl[rank][j]);*/
+          /*Tried some different approaches for error calculation, this seems to be the fastest.
+           * Not sure if fabs() branches, but it don't seem to improve compared to code that doesn't branch.*/
+          error = error | fabs(T[i][j] - prevl[rank][j]) > tol;
           /*error = max(error, fabs(T[i][j] - prevl[rank][j]));*/
           /*diff = T[i][j] - prevl[rank][j];
             error = error || diff > tol || -diff > tol;*/
         }
       }
+      /* Special code for the last line in the threads region. Uses data saved by the thread that processed this line.
+       * The last thread doesn't need this.*/
       if(rank+1<numThreads){
         for(j = 1; j < n1; ++j){
           double tmp = prevl[rank][j];
           prevl[rank][j] = (T[i-1][j] + prevf[rank+1][j] + T[i][j+1] + T[i][j-1])/4.0;
           T[i-1][j] = tmp;
 
-          error = error || fabs(T[i][j] - prevl[rank][j]) > tol;
+          error = error | fabs(T[i][j] - prevl[rank][j]) > tol;
         }
         ++i;
       }
+      /* Barrier here in case one thread is done before the next one started it doesn't overwirte the last line.*/
 #pragma omp barrier
-      for(j = 1; j < n1; ++j){
-        T[i-1][j] = prevl[rank][j];
-      }
+      memcpy(T[i-1]+1, prevl[rank]+1, (n-2)*sizeof(double)/sizeof(char));
+      /* Critical, barrier and flush to synchronize error cheking */
 #pragma omp critical
       {
-        glob_error = glob_error || error;
+        glob_error = glob_error | error;
       }
 #pragma omp barrier
 #pragma omp flush(glob_error,k)
     }
-    /*fprintf(stderr, "error: %d tol: %f k: %d maxiter: %d rank: %d\n", error, tol, k, maxiter, rank);*/
   }
 
   /* Get time */
@@ -137,11 +144,15 @@ int main(){
 
   /* Print */
   execTime = tEnd-tStart;
+  printf("Outer loop parallel\n");
   printf("Time: %f   Number of iterations: %d\n", execTime, k+1);
+  printf("Size: %d\n", n2);
+  printf("MFLOPS: %f\n", ((float)n2)*n2*5*(k+1)/(execTime*1000000));
+  printf("MFLOPS per thread: %f\n", ((float)n2)*n2*5*(k+1)/((execTime*glob_num_threads)*1000000));
   printf("Temperature of element T(1,1) = %.17f\n", T[1][1]);
 
   /* Save to file. */
-  save_res("result_c.dat", T);
+  /*save_res("result_c.dat", T);*/
 
   return 0;
 }
