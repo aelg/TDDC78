@@ -1,5 +1,9 @@
-#include <stdio.h>
+#include <string.h>
 #include "structures.h"
+
+void copy_pcord(pcord_t *to, pcord_t *from){
+  memcpy(to, from, sizeof(pcord_t)/sizeof(char));
+}
 
 particle_t* make_particle(double x, double y, double vx, double vy){
   particle_t *tmp = malloc(sizeof(particle_t)/sizeof(char));
@@ -25,17 +29,22 @@ void add_particle(part_list_t *l, particle_t *p){
     l->last = p;
     p->next = NULL;
   }
+  ++l->num_particles;
 }
 
 void remove_particle(part_list_t *l, particle_t *p){
+  --l->num_particles;
+  if(l->first == p && l->last == p){
+    l->first = NULL;
+    l->last = NULL;
+    return;
+  }
   if(l->first == p){
-    printf("First removed\n");
     l->first = p->next;
     l->first->prev = NULL;
     return;
   }
   if(l->last == p){
-    printf("Last removed\n");
     l->last = p->prev;
     l->last->next = NULL;
     return;
@@ -85,6 +94,12 @@ void remove_collision(collision_list_t *l, collision_pair_t *p){
 }
 
 void empty_collision_list(collision_list_t *l){
+  collision_pair_t *c = l->first, *tmp;
+  while(c){
+    tmp = c->next;
+    free(c);
+    c = tmp;
+  }
   l->first = NULL;
   l->last = NULL;
 }

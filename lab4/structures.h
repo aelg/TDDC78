@@ -2,6 +2,7 @@
 
 struct part_list{
   particle_t *first, *last;
+  int num_particles;
 };
 
 struct collision_pair{
@@ -17,6 +18,8 @@ struct collision_list{
 typedef struct part_list part_list_t;
 typedef struct collision_pair collision_pair_t;
 typedef struct collision_list collision_list_t;
+
+void copy_pcord(pcord_t *to, pcord_t *from);
 
 particle_t* make_particle(double x, double y, double vx, double vy);
 void add_particle(part_list_t *l, particle_t *p);
