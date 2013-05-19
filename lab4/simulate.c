@@ -10,9 +10,6 @@
 #include "physics.h"
 #include "structures.h"
 
-#define ROWS 2
-#define COLS 2
-
 #define ITERATIONS 1000
 #define TIME_STEP 1
 
@@ -31,6 +28,16 @@ int is_outside(particle_t *p){
   return -1;
 }
 
+void calc_layout(int nprocs, int *rows, int *cols){
+  int i;
+  for(i = 1; i < sqrt((double)nprocs) + 0.01; ++i){
+    if(nprocs % i == 0){
+      *rows = i;
+      *cols = nprocs/i;
+    }
+  }
+}
+
 
 double randf(){
   return ((double)rand()/(double)RAND_MAX);
@@ -41,16 +48,19 @@ int main (argc, argv)
   char *argv[];
 {
   int neighbours[4];
-  int dims[2] = {ROWS, COLS};
+  int dims[2];
+  int rows, cols;
   int periods[2] = {1, 1};
   int reorder = 1;
   MPI_Comm grid_comm;
   MPI_Datatype pcord_mpi;
+  double start_time = 0, end_time = 0, run_time;
   
   int rank = 0, nprocs = 1;
   int my_coords[2], coords[2];
   int i, j, k;
-  double pressure, V, T, R, N, Ttot, ptot;
+  double pressure, V, T, R, Ttot, ptot;
+  int N;
   pcord_t send_buffs[4][COMM_BUFFER_SIZE];
   pcord_t recv_buffs[4][COMM_BUFFER_SIZE];
   int send_counts[4];
@@ -70,7 +80,15 @@ int main (argc, argv)
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);  /* get current process id */
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);  /* get number of processes */
   
+  /* Start timer */ 
+  if(rank == 0) start_time = MPI_Wtime();
+
   /* Initialize */
+  calc_layout(nprocs, &rows, &cols);
+  if(rank == 0) printf("Layout: %dx%d\n", rows, cols);
+  dims[1] = rows;
+  dims[0] = cols;
+
   particles.first = NULL;
   particles.last = NULL;
   particles.num_particles = 0;
@@ -109,16 +127,18 @@ int main (argc, argv)
   }
 
   /* Calculate local box */
-  min_x = my_coords[0]*BOX_HORIZ_SIZE/COLS;
-  if(my_coords[0] == COLS-1)
+  min_x = my_coords[0]*BOX_HORIZ_SIZE/cols;
+  if(my_coords[0] == cols-1)
     max_x = BOX_HORIZ_SIZE;
   else
-    max_x = (my_coords[0]+1)*BOX_HORIZ_SIZE/COLS;
-  min_y = my_coords[1]*BOX_VERT_SIZE/ROWS;
-  if(my_coords[1] == ROWS-1)
+    max_x = (my_coords[0]+1)*BOX_HORIZ_SIZE/cols;
+  min_y = my_coords[1]*BOX_VERT_SIZE/rows;
+  if(my_coords[1] == rows-1)
     max_y = BOX_VERT_SIZE;
   else
-    max_y = (my_coords[1]+1)*BOX_VERT_SIZE/ROWS;
+    max_y = (my_coords[1]+1)*BOX_VERT_SIZE/rows;
+
+  /*printf("%f %f %f %f\n", min_x, max_x, min_y, max_y);*/
 
 
   /* Initiate particles (TODO: this has uniform speed should probably be gaussian). */
@@ -135,6 +155,8 @@ int main (argc, argv)
   T = T/INIT_NO_PARTICLES;
 
   for(i = 0; i < ITERATIONS; ++i){
+
+    /*if(rank == 0 && i%50 == 0) printf("%d\n", i);*/
 
     for(j = 0; j < 4; ++j){
       send_counts[j] = 0;
@@ -208,18 +230,20 @@ int main (argc, argv)
     /* Send stuff */
     for(j = 0; j < 4; ++j){
       MPI_Isend(send_buffs[j], send_counts[j], pcord_mpi, neighbours[j], 0, grid_comm, &(request[j]));
-      //printf("%d %d %d\n", rank, neighbours[j], send_counts[j]);
+      /*printf("%d\n", send_counts[j]);*/
     }
     /* Receive stuff */
     for(j = 0; j < 4; ++j){
       MPI_Recv(recv_buffs[j], COMM_BUFFER_SIZE, pcord_mpi, MPI_ANY_SOURCE, 0, grid_comm, &(status[j]));
     }
-    //MPI_Waitall(4, request, status);
-    MPI_Barrier(grid_comm);
+    MPI_Waitall(4, request, MPI_STATUS_IGNORE);
+    /*MPI_Barrier(grid_comm);*/
     for(j = 0; j < 4; ++j){
       int count;
       MPI_Get_count(&(status[j]), pcord_mpi, &count);
       for(k = 0; k < count; ++k){
+        /*if(recv_buffs[j][k].x < min_x || recv_buffs[j][k].x > max_x ||  recv_buffs[j][k].y < min_y ||  recv_buffs[j][k].y > max_y)
+          printf("Got particle that is not in region.\n");*/
         add_particle(&particles, make_particle(recv_buffs[j][k].x, recv_buffs[j][k].y, recv_buffs[j][k].vx, recv_buffs[j][k].vy));
       }
     }
@@ -227,14 +251,20 @@ int main (argc, argv)
   MPI_Reduce(&T, &Ttot, 1, MPI_DOUBLE, MPI_SUM, 0, grid_comm);
   MPI_Reduce(&pressure, &ptot, 1, MPI_DOUBLE, MPI_SUM, 0, grid_comm);
 
+  /*printf("rank %d #particles: %d\n", rank, particles.num_particles);*/
+
   if(rank == 0){
+    end_time = MPI_Wtime();
+    run_time = end_time - start_time;
+    printf("Simulated %d timesteps on %d processors in %g secs\n\n", i, nprocs, run_time);
+
     T = Ttot/nprocs;
-    R = ptot*V/(N*nprocs*T);
-    printf("Pressure: %f\n", ptot);
-    printf("Temp: %f\n", T);
-    printf("Volume: %f\n", V);
-    printf("N: %f\n\n", N*nprocs);
-    printf("R: %e\n", R);
+    R = ptot*V/(N*nprocs*T*WALL_LENGTH);
+    printf("Pressure: %.2f\n", ptot/WALL_LENGTH);
+    printf("Temp: %.2f\n", T);
+    printf("Volume: %.2e\n", V);
+    printf("N: %d\n\n", N*nprocs);
+    printf("R: %.2f\n", R);
   }
 
 
