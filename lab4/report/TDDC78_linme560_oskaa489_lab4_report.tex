@@ -28,7 +28,7 @@
 \fancypagestyle{tcr}{%
   \fancyhf{} %clear all headers and footers fields
   \fancyhead[R]{\thepage}
-  \fancyhead[L]{\textbf{Lab No 3 TDDC78}}
+  \fancyhead[L]{\textbf{Lab No 4 TDDC78}}
   \renewcommand{\headrulewidth}{0.4pt}
 }
 
@@ -54,7 +54,7 @@
 
 \begin{document}
 %% title stuff
-\title{Lab No 3 TDDC78}
+\title{Lab No 4 TDDC78}
 \author{Linus Mellberg (linme560) \and Oskar Aagaard (oskaa489)}
 \date{\today}
 \maketitle
@@ -66,27 +66,40 @@
 %\tableofcontents
 
 \section{Stationary Heat Conduction Using OpenMP}
-The task is determining heat spread into a square 2-dimensional area given stationary temperatures at the edges of said square. The temperature inside is given by the differential equation \ref{diff_eq}.
+The task is determining heat spread into a square 2-dimensional area given stationary temperatures at the edges of said square. The temperature inside is given by the differential equation 
 
-\begin{equation}
-%\caption{Differential equation for temperature distribution}
+\begin{math}
 \label{diff_eq}
-\frac{\partial ^2T}{\partial x^2} + \frac{\partial ^2T}{\partial y^2} = 0,\quad 0<x,y<1.
-\end{equation}
+\frac{\partial ^2T}{\partial x^2} + \frac{\partial ^2T}{\partial y^2} = 0, 0 < x,y < 1.
+\end{math}
 
-The problem is approximately solved with the iterative and discretized \emph{Jacobi method} which produces more correct results for each iteration of the algorithm. The area is split into a 2-dimensional square matrix storing discrete T values. An iteration consists of updating every value in the matrix according to equation \ref{jacobi_eq}, which takes an average of the surrounding elements' temperatures in the previous iteration. In each iteration an error estimate is also calulated. The estimate is then used to determine if further iterations are required by comparing it with a tolerance level.
 
-\begin{equation}
-\label{jacobi_eq}
-T^{k+1}_{i,j}=\left(T^k_{i-1,j} + T^k_{i+1,j} + T^k_{i,j+1} + T^k_{i,j-1}\right)/4
-\end{equation}
+The averaging filter works by convoluting the input image with a gaussian filter kernel.
+This will do a weighted average on the pixel and the pixels surrounding it.
+Since the gaussian kernel is symmetric the the calculation can be simplified, this makes the problem linear in the radius of the kernel.
+\subsection{Description of the program}
+The program uses the MPI framework for communication between the processes.
+Parallelization is done by splitting the picture into equal regions along the y-axis.
+Each process then apply the filter on the region that is given to it. 
+Since the filter does averaging on the neighbouring pixels each process needs more data than the pixels which it filters.
+This makes it neccesary to send more data to each process than the data that belongs to the region which it filters.
 
-\subsection{Parallelization of the program}
-The program uses the OpenMP framework for thread and memory handling. The problem is divided into equal horizontal stripes which are solved in parallel for each iteration of the algorithm. 
+The process with rank 0 reads the image from disk.
+When this is done it broadcast the dimension of the picture.
+Every process then calculates how the picture is divided into regions and shared between the processes.
+When this is done the rank 0 process send the data to the processes, each process gets all data needed to do its own filtering.
+As soon as a process has recieved its data it will start applying the filter to it.
+The rank 0 process also gets a region of the image and start processing as soon as possible.
+When the processes are done with the filtering a \emph{MPI\_Gatherv} operation is performed to collect all the data at the rank 0 process.
+This process then writes the filtered image to disk.
 
-Because the threads' first and last row need other threads' \emph{T-values} the threads wait for each other at the end of each iteration so that the correct information in the \emph{T-matrix} will be available for the next iteration. The first and last row also requires additional special handling because the rows below and above a region in the \emph{T-matrix} belongs to other threads' regions and could already have been updated to the current iteration. To solve this those rows in each region is duplicated in arrays outside the matrix creating total memory usage of $N^2+2*N*p$ where N is one side of the matrix and p is the number of threads.
-
-The error calculation is handled locally by each thread until the end of an iteration where an OpenMP \emph{critical section} is used to update a shared global error value which is used in determining if another iteration should be run.
+At first the nonblocking send was used to distribute data to the processes.
+When the program was analyzed with traceanalyzer it was discovered that this is not a good thing to do.
+The nonblocking send does not send the data immediately.
+It seems that what is done is put the data into a buffer and send this when another MPI call is waiting to complete.
+The result of this behavoiur is that the root process completes its own filtering before sending any data to the other processes.
+This makes all the other processes idle while the root process filter the data given to it, this effectively doubles the execution time of the program.
+When using the blocking send operation all data is sent before any filtering and the non-root processes are only idle when data is read and written to disk.
 
 \subsection{Result and graphs}
 
