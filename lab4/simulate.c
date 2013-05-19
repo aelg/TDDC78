@@ -252,6 +252,12 @@ int main (argc, argv)
   MPI_Reduce(&pressure, &ptot, 1, MPI_DOUBLE, MPI_SUM, 0, grid_comm);
 
   /*printf("rank %d #particles: %d\n", rank, particles.num_particles);*/
+  p1 = particles.first;
+  while(p1){
+    p2 = p1->next;
+    free(p1);
+    p1 = p2;
+  }
 
   if(rank == 0){
     end_time = MPI_Wtime();
