@@ -71,7 +71,9 @@ int main(){
   tStart = omp_get_wtime();
 
   glob_error = 1;
-#pragma omp parallel shared(tol, T, k, glob_error) private(i,j, rank, error, startline, endline) reduction(min : numThreads)
+#pragma omp parallel shared(tol, T, k, glob_error) 
+      private(i,j, rank, error, startline, endline) 
+      reduction(min : numThreads)
   {
     /* Divide work between threads.*/
     rank = omp_get_thread_num();
@@ -95,7 +97,6 @@ int main(){
       }
       error = 0;
       glob_error = 0;
-
       /* Save data that are needed later.*/
       memcpy(prevl[rank], T[startline-1], n*sizeof(double)/sizeof(char));
       memcpy(prevf[rank], T[startline], n*sizeof(double)/sizeof(char));
@@ -106,15 +107,18 @@ int main(){
           prevl[rank][j] = (T[i-1][j] + T[i+1][j] + T[i][j+1] + T[i][j-1])/4.0;
           T[i-1][j] = tmp;
 
-          /*Tried some different approaches for error calculation, this seems to be the fastest.
-           * Not sure if fabs() branches, but it don't seem to improve compared to code that doesn't branch.*/
+          /*Tried some different approaches for error calculation, 
+		   *this seems to be the fastest.
+           * Not sure if fabs() branches, but it doesn't seem to improve 
+		   * compared to code that doesn't branch.*/
           error = error | fabs(T[i][j] - prevl[rank][j]) > tol;
           /*error = max(error, fabs(T[i][j] - prevl[rank][j]));*/
           /*diff = T[i][j] - prevl[rank][j];
             error = error || diff > tol || -diff > tol;*/
         }
       }
-      /* Special code for the last line in the threads region. Uses data saved by the thread that processed this line.
+      /* Special code for the last line in the threads region. 
+	   * Uses data saved by the thread that processed this line.
        * The last thread doesn't need this.*/
       if(rank+1<numThreads){
         for(j = 1; j < n1; ++j){
@@ -126,7 +130,8 @@ int main(){
         }
         ++i;
       }
-      /* Barrier here in case one thread is done before the next one started it doesn't overwirte the last line.*/
+      /* Barrier here in case one thread is done before the next one started it 
+	   * doesn't overwrite the last line.*/
 #pragma omp barrier
       memcpy(T[i-1]+1, prevl[rank]+1, (n-2)*sizeof(double)/sizeof(char));
       /* Critical, barrier and flush to synchronize error cheking */
@@ -148,7 +153,8 @@ int main(){
   printf("Time: %f   Number of iterations: %d\n", execTime, k+1);
   printf("Size: %d\n", n2);
   printf("MFLOPS: %f\n", ((float)n2)*n2*5*(k+1)/(execTime*1000000));
-  printf("MFLOPS per thread: %f\n", ((float)n2)*n2*5*(k+1)/((execTime*glob_num_threads)*1000000));
+  printf("MFLOPS per thread: %f\n", 
+		 ((float)n2)*n2*5*(k+1)/((execTime*glob_num_threads)*1000000));
   printf("Temperature of element T(1,1) = %.17f\n", T[1][1]);
 
   /* Save to file. */

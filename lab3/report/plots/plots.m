@@ -31,7 +31,7 @@ flops_t = [n_1000_flops_t; n_1414_flops_t; n_2000_flops_t; n_2828_flops_t; n_400
 figure(1);
 plot(threads, n_1000_time, 'b-x', threads, n_1414_time, 'r-x', threads, n_2000_time, 'g-x', threads, n_2828_time, 'y-x', threads, n_4000_time, 'c-x');
 xlabel('Threads');
-ylabel('Execution time [t]')
+ylabel('Execution time [s]')
 legend('N = 1000', 'N = 1414', 'N = 2000', 'N = 2828', 'N = 4000');
 
 figure(2);
@@ -52,3 +52,9 @@ xlabel('Problem Size (N)');
 ylabel('MFLOPS per thread');
 ylim([0 3500]);
 legend('1', '2', '4', '8', '16', 'Location', 'Northeast');
+
+figure(5);
+plot(threads,[n_1000_time(1) n_1414_time(2) n_2000_time(3) n_2828_time(4) n_4000_time(5)], 'b-x');
+xlabel('Problem size / Threads');
+ylabel('Execution time [s]');
+
