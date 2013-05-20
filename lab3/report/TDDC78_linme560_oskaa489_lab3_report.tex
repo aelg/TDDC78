@@ -84,12 +84,31 @@ T^{k+1}_{i,j}=\left(T^k_{i-1,j} + T^k_{i+1,j} + T^k_{i,j+1} + T^k_{i,j-1}\right)
 \subsection{Parallelization of the program}
 The program uses the OpenMP framework for thread and memory handling. The problem is divided into equal horizontal stripes which are solved in parallel for each iteration of the algorithm. 
 
-Because the threads' first and last row need other threads' \emph{T-values} the threads wait for each other at the end of each iteration so that the correct information in the \emph{T-matrix} will be available for the next iteration. The first and last row also requires additional special handling because the rows below and above a region in the \emph{T-matrix} belongs to other threads' regions and could already have been updated to the current iteration. To solve this those rows in each region is duplicated in arrays outside the matrix creating total memory usage of $N^2+2*N*p$ where N is one side of the matrix and p is the number of threads.
+Because the threads' first and last row need other threads' \emph{T-values} the threads wait for each other at the end of each iteration so that the correct information in the \emph{T-matrix} will be available for the next iteration. The first and last row also requires additional special handling because the rows below and above a region in the \emph{T-matrix} belongs to other threads' regions and could already have been updated to the current iteration. To solve this those rows in each region is duplicated in arrays outside the matrix creating total memory complexity of $\left(N^2+2*N*p\right)\in\mathcal{O}(N^2 + ...)$ where N is one side of the matrix and p is the number of threads.
 
 The error calculation is handled locally by each thread until the end of an iteration where an OpenMP \emph{critical section} is used to update a shared global error value which is used in determining if another iteration should be run.
 
 \subsection{Result and graphs}
+The parallel program successfully returns the same result as the given linear program.
 
+For small problem sizes we achieve almost linear results in resource scaling where we halve the execution time if we double the number of processors. We can see this in figure \ref{runtime_vs_cores} but also that for larger problem sizes a bottleneck prevents scaling. 
+
+We can explore this further by looking at figure \ref{flops_thread_vs_n} which shows MFlops per thread. If we look at 16 threads we see that flops per resource is increasing with problem size up to a point; this is because the overhead between iterations grows less quickly with N than the work required per iteration. After that point we see a significant drop in flops per thread. We believe this may be because the memory bandwidth from remote memory becomes a bottleneck. When the matrix stops fitting in cache so that it has to be put in remote memory during the calculations we get problems. Let us assume an optimistic case of 1 memory write and read per element, iteration and thread. For a matrix size of 8000000 (N = 2828), where the problem starts, we have $n\_it*N^2*n\_accesses*size\_of\_double/exec\_t=557*8\times10^{6}*2*8/2.3=3.01\times10^{10}$ bytes read/write per second. This is in the same order of magnitude as the xeon E5-2660's memory bandwidth which leads us to believe it is the problem.
+
+If we keep resources constant and change the problem size we also see linear scaling, at least when using 4 or fewer processors; the overhead appears to become a problem when the problem size is small and the resource count is high. The scaling between the two largest problem sizes is still linear up to 16 processors which is the highest amount we can test with.
+
+
+\begin{figure}[!h]
+  \caption{Run times related to number of cores for problemsizes where one side of the matrix is of size N.}
+  \label{runtime_vs_cores}
+  \includegraphics[scale=0.9]{./plots/lab3_exec_t_threads.png}
+\end{figure}
+
+\begin{figure}[!h]
+  \caption{MFlops per thread related to problemsize for different number of cores.}
+  \label{flops_thread_vs_n}
+  \includegraphics[scale=0.9]{./plots/lab3_mflops_per_thread_n.png}
+\end{figure}
 \clearpage
 
 \begin{comment}
@@ -153,5 +172,5 @@ The error calculation is handled locally by each thread until the end of an iter
 \clearpage
 \section{Source code}
 Files that are included but not listed here were downloaded from the course webpage and not modified.
-
+\lstinputlisting[caption=laplsolv\_openmp.c]{../laplsolv_openmp.c}
 \end{document}
