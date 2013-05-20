@@ -1,5 +1,5 @@
 threads = [1 2 4 8 16];
-size = [1000*1000 1414*1414 2000*2000 2828*2828 4000*4000 10000*10000];
+size = [1000 1414 2000 2828 4000 10000];
 
 n_1000_time = [0.860502 0.464044 0.308580 0.174112 0.216558];
 n_1000_flops_t = [3242.293583 3000.792351 2256.303586 1999.430418 803.768563];
@@ -42,13 +42,13 @@ legend('N = 1000', 'N = 1414', 'N = 2000', 'N = 2828', 'N = 4000', 'Location', '
 
 figure(3);
 plot(size, flops(1,:), 'b-x', size, flops(2,:), 'r-x', size, flops(3,:), 'g-x', size, flops(4,:), 'y-x', size, flops(5,:), 'c-x');
-xlabel('Problem Size (N*N)');
+xlabel('Problem Size (N)');
 ylabel('Total MFLOPS')
 legend('1', '2', '4', '8', '16', 'Location', 'Northeast');
 
 figure(4);
 plot(size, flops_t(1,:), 'b-x', size, flops_t(2,:), 'r-x', size, flops_t(3,:), 'g-x', size, flops_t(4,:), 'y-x', size, flops_t(5,:), 'c-x');
-xlabel('Problem Size (N*N)');
+xlabel('Problem Size (N)');
 ylabel('MFLOPS per thread');
 ylim([0 3500]);
 legend('1', '2', '4', '8', '16', 'Location', 'Northeast');

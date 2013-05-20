@@ -10,7 +10,7 @@
 #include "physics.h"
 #include "structures.h"
 
-#define ITERATIONS 1000
+#define ITERATIONS 2000
 #define TIME_STEP 1
 
 #define LEFT 0
@@ -55,6 +55,7 @@ int main (argc, argv)
   MPI_Comm grid_comm;
   MPI_Datatype pcord_mpi;
   double start_time = 0, end_time = 0, run_time;
+  double vert_size, horiz_size, max_v;
   
   int rank = 0, nprocs = 1;
   int my_coords[2], coords[2];
@@ -79,6 +80,19 @@ int main (argc, argv)
   MPI_Init (&argc, &argv);  /* starts MPI */
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);  /* get current process id */
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);  /* get number of processes */
+
+  /* Read arguments */
+  if(argc != 5){
+    printf("Bad # of arguments. Use %s N horiz_size vert_size max_initial_velocity\n", argv[0]);
+    MPI_Finalize();
+    exit(1);
+  }
+
+  N = atoi(argv[1])/nprocs;
+  horiz_size = atof(argv[2]);
+  vert_size = atof(argv[3]);
+  max_v = atof(argv[4]);
+
   
   /* Start timer */ 
   if(rank == 0) start_time = MPI_Wtime();
@@ -97,14 +111,13 @@ int main (argc, argv)
   collisions.last = NULL;
 
   box.x0 = 0;
-  box.x1 = BOX_HORIZ_SIZE;
+  box.x1 = horiz_size;
   box.y0 = 0;
-  box.y1 = BOX_VERT_SIZE;
+  box.y1 = vert_size;
 
   pressure = 0;
   T = 0;
-  V = BOX_HORIZ_SIZE*BOX_VERT_SIZE;
-  N = INIT_NO_PARTICLES;
+  V = horiz_size*vert_size;
 
   /* Create custom type */
   MPI_Type_contiguous(4, MPI_FLOAT, &pcord_mpi);
@@ -127,32 +140,32 @@ int main (argc, argv)
   }
 
   /* Calculate local box */
-  min_x = my_coords[0]*BOX_HORIZ_SIZE/cols;
+  min_x = my_coords[0]*horiz_size/cols;
   if(my_coords[0] == cols-1)
-    max_x = BOX_HORIZ_SIZE;
+    max_x = horiz_size;
   else
-    max_x = (my_coords[0]+1)*BOX_HORIZ_SIZE/cols;
-  min_y = my_coords[1]*BOX_VERT_SIZE/rows;
+    max_x = (my_coords[0]+1)*horiz_size/cols;
+  min_y = my_coords[1]*vert_size/rows;
   if(my_coords[1] == rows-1)
-    max_y = BOX_VERT_SIZE;
+    max_y = vert_size;
   else
-    max_y = (my_coords[1]+1)*BOX_VERT_SIZE/rows;
+    max_y = (my_coords[1]+1)*vert_size/rows;
 
   /*printf("%f %f %f %f\n", min_x, max_x, min_y, max_y);*/
 
 
   /* Initiate particles (TODO: this has uniform speed should probably be gaussian). */
-  for(i = 0; i < INIT_NO_PARTICLES; ++i){
+  for(i = 0; i < N; ++i){
     double angle = randf()*PI;
-    double v = randf()*MAX_INITIAL_VELOCITY;
+    double v = randf()*max_v;
     double x = randf()*(max_x - min_x) + min_x;
     double y = randf()*(max_y - min_y) + min_y;
     double vx = v * cos(angle);
     double vy = v * sin(angle);
     add_particle(&particles, make_particle(x, y, vx, vy));
-    T += v*v;
+    T += v*v/2;
   }
-  T = T/INIT_NO_PARTICLES;
+  T = T/(N);
 
   for(i = 0; i < ITERATIONS; ++i){
 
@@ -260,13 +273,14 @@ int main (argc, argv)
   }
 
   if(rank == 0){
+    float wall_length = (vert_size+horiz_size)*2;
     end_time = MPI_Wtime();
     run_time = end_time - start_time;
     printf("Simulated %d timesteps on %d processors in %g secs\n\n", i, nprocs, run_time);
 
     T = Ttot/nprocs;
-    R = ptot*V/(N*nprocs*T*WALL_LENGTH);
-    printf("Pressure: %.2f\n", ptot/WALL_LENGTH);
+    R = ptot*V/(N*nprocs*T*wall_length*ITERATIONS);
+    printf("Pressure: %.2f\n", ptot/wall_length);
     printf("Temp: %.2f\n", T);
     printf("Volume: %.2e\n", V);
     printf("N: %d\n\n", N*nprocs);

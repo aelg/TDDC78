@@ -65,43 +65,80 @@
 \pagestyle{tcr}
 %\tableofcontents
 
-\section{Stationary Heat Conduction Using OpenMP}
-The task is determining heat spread into a square 2-dimensional area given stationary temperatures at the edges of said square. The temperature inside is given by the differential equation 
+\section{Particle Simulation}
+By simulating particle moving and interacting in a box the gas law $pV = nRT$ can be verified.
+The problem is solved for the 2 dimensional case, where the particles are moving in a rectangular plane.
+$p$ is the pressure, this is calculated by counting the momentum transferred to the box wall divided by the length of it every timestep.
+$V$ is the area of the box (2d volume).
+$n$ is the number of particles in the box.
+$T$ is the temperature of the gas which is proportional to the average energy of the particles.
+Energy is calculated as $\frac{v^2}{2}$ where v is the velocity of a particle.
+The mass of the particles is the same for all of them and each particle weighs one mass unit.
+$R$ is a constant.
+The verification of the gas law is done by calculating this $R=\frac{pV}{nT}$ for different setups and verify that it is constant.
 
-\begin{math}
-\label{diff_eq}
-\frac{\partial ^2T}{\partial x^2} + \frac{\partial ^2T}{\partial y^2} = 0, 0 < x,y < 1.
-\end{math}
+\subsection{Implementation}
+A sequential program that implements this simulation need to do the following.
+Distribute a $n$ particles and their velocities uniformly in the box.
+Then for each timestep:
+\begin{itemize}
+  \item Check for collisions between particles, for every collision calculate new velocities and positions for the particles.
+  \item For every non-colliding particle move it.
+  \item For every particle that has moved outside the box move it inside and calculate the momentum transferred to the wall.
+\end{itemize}
+In this implementation each particle can only collide with one other particle during each timestep.
+This is a simplification, but it is reasonable if the number of collisions is low.
+This means that the number of particles has to low compared to the area of the box.
+
+The above algorithm gives an asymptotic complexity of $O(N^2)$ if $N$ is the number of particles.
+This can be improved by a simplification.
+If the velocities of the particles are small, particles will only interact with other particles if they are close to each other at the beginning of each timestep.
+The box can be divide into a number of regions and only particles that are in the same region at the start of each timestep needs to be checked for collisions.
+Some collisions will be ignored if this is done, since there are no interactions between particles in different regions.
+If the timestep and velocities are small this will not affect the final result much.
+To minimize the number of missed collision, the area of each region divided by its circumference, should be maximized.
+A reasonably good way to do this is to divided the box into equally big rectangles.
+The asymptotic complexity for this algorithm is $O(r(\frac{N}{r})^2) = O(\frac{N^2}{r})$ if $r$ is the number of regions that the box are divided into.
+This algorithm is also much more suited for parallelization.
+
+The way we implementeded it was to use one region for each process.
+Each process gets a rectangular region, it then creates particles randomly in this region.
+A timestep is run according to the algorithm above independently in each region.
+When a timestep has finished, particles that has moved outside a process' region is sent to the process that handles the region it ended up in.
+To move particles between processes an MPI datatype was created to represent a particle.
+After each timestep a list of particles is sent to all neighbouring processes.
+Particles are only sent to neighbours that are adjacent horizontally and vertically.
+If a particle should move diagonally between regions it will end up in one of the adjacent regions instead and then moved to the correct region after the next timestep.
+This should not occur often and will probably not affect the result much.
+Only particles that moves between regions are communicated with MPI.
+This means that the interprocess communication is fairly low.
+Internally each process uses linked lists to store particles.
+This implementation should have the asymptotic complexity $O((\frac{N}{p})^2)$ where $p$ is the number of processes.
+
+\subsection{Results}
+The results of particle simulation seems to agree with the gas law.
+The program was executed with some different parameters and R was calculated for each run.
+The generated data can be seen in table \ref{data}.
+R seems to be constant.
+
+In figure \ref{exec} 
 
 
-The averaging filter works by convoluting the input image with a gaussian filter kernel.
-This will do a weighted average on the pixel and the pixels surrounding it.
-Since the gaussian kernel is symmetric the the calculation can be simplified, this makes the problem linear in the radius of the kernel.
-\subsection{Description of the program}
-The program uses the MPI framework for communication between the processes.
-Parallelization is done by splitting the picture into equal regions along the y-axis.
-Each process then apply the filter on the region that is given to it. 
-Since the filter does averaging on the neighbouring pixels each process needs more data than the pixels which it filters.
-This makes it neccesary to send more data to each process than the data that belongs to the region which it filters.
-
-The process with rank 0 reads the image from disk.
-When this is done it broadcast the dimension of the picture.
-Every process then calculates how the picture is divided into regions and shared between the processes.
-When this is done the rank 0 process send the data to the processes, each process gets all data needed to do its own filtering.
-As soon as a process has recieved its data it will start applying the filter to it.
-The rank 0 process also gets a region of the image and start processing as soon as possible.
-When the processes are done with the filtering a \emph{MPI\_Gatherv} operation is performed to collect all the data at the rank 0 process.
-This process then writes the filtered image to disk.
-
-At first the nonblocking send was used to distribute data to the processes.
-When the program was analyzed with traceanalyzer it was discovered that this is not a good thing to do.
-The nonblocking send does not send the data immediately.
-It seems that what is done is put the data into a buffer and send this when another MPI call is waiting to complete.
-The result of this behavoiur is that the root process completes its own filtering before sending any data to the other processes.
-This makes all the other processes idle while the root process filter the data given to it, this effectively doubles the execution time of the program.
-When using the blocking send operation all data is sent before any filtering and the non-root processes are only idle when data is read and written to disk.
-
-\subsection{Result and graphs}
+\begin{table}[h!]
+  \caption{Data from particle simulation.}
+  \label{data}
+  \begin{tabular}[h]{|l|l|l|l|l|}
+    \hline
+    T       & n     & V (dimensions)         & p          & R\\
+    \hline
+    418.41  & 20000 & 1.00e+08 (10000x10000) & 8.3256e-2  & 0.99 \\ 
+    415.40  & 20000 & 8.40e+07 (28000x3000)  & 9.8715e-2  & 1.00 \\ 
+    411.55  & 9984  & 1.00e+08 (10000x100000 & 4.0979e-2  & 1.00 \\ 
+    2521.34 & 9984  & 1.00e+08 (10000x10000) & 0.249838   & 0.99 \\
+    912.35  & 23744 & 5.91e+09 (85832x68832) & 3.657e-3   & 1.00 \\
+    \hline
+  \end{tabular}
+\end{table}
 
 \clearpage
 
