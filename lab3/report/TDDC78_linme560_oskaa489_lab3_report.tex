@@ -91,7 +91,7 @@ The error calculation is handled locally by each thread until the end of an iter
 \subsection{Result and graphs}
 The parallel program successfully returns the same result as the given linear program.
 
-For small problem sizes we achieve almost linear results in resource scaling where we halve the execution time if we double the number of processors. We can see this in figure \ref{runtime_vs_cores} but also that for larger problem sizes a bottleneck prevents scaling. 
+For small problem sizes we achieve almost linear results in resource scaling where we halve the execution time if we double the number of processors. We can see this in figure \ref{runtime_vs_cores} but also that for larger problem sizes a bottleneck prevents scaling. This bottleneck can more clearly be seen in figure \ref{flops_vs_n} where we see that for large problems total MFlops is the same for 8 and 16 threads, meaning there's no additional gain from increasing the amount of cores.
 
 We can explore this further by looking at figure \ref{flops_thread_vs_n} which shows MFlops per thread. If we look at 16 threads we see that flops per resource is increasing with problem size up to a point; this is because the overhead between iterations grows less quickly with N than the work required per iteration. After that point we see a significant drop in flops per thread. We believe this may be because the memory bandwidth from remote memory becomes a bottleneck. When the matrix stops fitting in cache so that it has to be put in remote memory during the calculations we get problems. Let us assume an optimistic case of 1 memory write and read per element, iteration and thread. For a matrix size of 8000000 (N = 2828), where the problem starts, we have $n\_it*N^2*n\_accesses*size\_of\_double/exec\_t=557*8\times10^{6}*2*8/2.3=3.01\times10^{10}$ bytes read/write per second. This is in the same order of magnitude as the xeon E5-2660's memory bandwidth which leads us to believe it is the problem.
 
@@ -108,6 +108,12 @@ If we keep resources constant and change the problem size we also see linear sca
   \caption{MFlops per thread related to problemsize for different number of cores.}
   \label{flops_thread_vs_n}
   \includegraphics[scale=0.9]{./plots/lab3_mflops_per_thread_n.png}
+\end{figure}
+
+\begin{figure}[!h]
+  \caption{Total MFlops related to problemsize for different number of cores.}
+  \label{flops_vs_n}
+  \includegraphics[scale=0.9]{./plots/lab3_tot_mflops_n.png}
 \end{figure}
 \clearpage
 
