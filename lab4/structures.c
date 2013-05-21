@@ -53,7 +53,8 @@ void remove_particle(part_list_t *l, particle_t *p){
   p->next->prev = p->prev;
 }
 
-collision_pair_t* make_collision_pair(particle_t *p1, particle_t *p2, double t){
+collision_pair_t* make_collision_pair(particle_t *p1, 
+    particle_t *p2, double t){
   collision_pair_t *tmp = malloc(sizeof(collision_pair_t)/sizeof(char));
   tmp->p1 = p1;
   tmp->p2 = p2;

@@ -77,13 +77,15 @@ int main (argc, argv)
 
   cord_t box;
   
-  MPI_Init (&argc, &argv);  /* starts MPI */
-  MPI_Comm_rank (MPI_COMM_WORLD, &rank);  /* get current process id */
-  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);  /* get number of processes */
+  /* starts MPI */
+  MPI_Init (&argc, &argv);  
+  MPI_Comm_rank (MPI_COMM_WORLD, &rank);
+  MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
 
   /* Read arguments */
   if(argc != 5){
-    printf("Bad # of arguments. Use %s N horiz_size vert_size max_initial_velocity\n", argv[0]);
+    printf("Bad # of arguments. Use %s N horiz_size\
+ vert_size max_initial_velocity\n", argv[0]);
     MPI_Finalize();
     exit(1);
   }
@@ -123,12 +125,14 @@ int main (argc, argv)
   MPI_Type_contiguous(4, MPI_FLOAT, &pcord_mpi);
   MPI_Type_commit(&pcord_mpi);
 
-  /* Init random generator (use rank to not seed with the same number for all rank)*/
+  /* Init random generator 
+   * (use rank to not seed with the same number for all rank)*/
   srand((unsigned int) time(NULL) + rank*100);
 
   /* Create grid cart */
   MPI_Dims_create(nprocs, 2, dims);
-  MPI_Cart_create(MPI_COMM_WORLD, 2, dims, periods, reorder, &grid_comm);
+  MPI_Cart_create(MPI_COMM_WORLD, 2, 
+      dims, periods, reorder, &grid_comm);
 
   MPI_Cart_get(grid_comm, 2, dims, periods, my_coords);
 
@@ -154,7 +158,7 @@ int main (argc, argv)
   /*printf("%f %f %f %f\n", min_x, max_x, min_y, max_y);*/
 
 
-  /* Initiate particles (TODO: this has uniform speed should probably be gaussian). */
+  /* Initiate particles. */
   for(i = 0; i < N; ++i){
     double angle = randf()*PI;
     double v = randf()*max_v;
@@ -242,12 +246,14 @@ int main (argc, argv)
 
     /* Send stuff */
     for(j = 0; j < 4; ++j){
-      MPI_Isend(send_buffs[j], send_counts[j], pcord_mpi, neighbours[j], 0, grid_comm, &(request[j]));
+      MPI_Isend(send_buffs[j], send_counts[j], pcord_mpi, 
+          neighbours[j], 0, grid_comm, &(request[j]));
       /*printf("%d\n", send_counts[j]);*/
     }
     /* Receive stuff */
     for(j = 0; j < 4; ++j){
-      MPI_Recv(recv_buffs[j], COMM_BUFFER_SIZE, pcord_mpi, MPI_ANY_SOURCE, 0, grid_comm, &(status[j]));
+      MPI_Recv(recv_buffs[j], COMM_BUFFER_SIZE, pcord_mpi, 
+          MPI_ANY_SOURCE, 0, grid_comm, &(status[j]));
     }
     MPI_Waitall(4, request, MPI_STATUS_IGNORE);
     /*MPI_Barrier(grid_comm);*/
@@ -255,9 +261,11 @@ int main (argc, argv)
       int count;
       MPI_Get_count(&(status[j]), pcord_mpi, &count);
       for(k = 0; k < count; ++k){
-        /*if(recv_buffs[j][k].x < min_x || recv_buffs[j][k].x > max_x ||  recv_buffs[j][k].y < min_y ||  recv_buffs[j][k].y > max_y)
+        /*if(recv_buffs[j][k].x < min_x || recv_buffs[j][k].x > max_x 
+          ||  recv_buffs[j][k].y < min_y ||  recv_buffs[j][k].y > max_y)
           printf("Got particle that is not in region.\n");*/
-        add_particle(&particles, make_particle(recv_buffs[j][k].x, recv_buffs[j][k].y, recv_buffs[j][k].vx, recv_buffs[j][k].vy));
+        add_particle(&particles, make_particle(recv_buffs[j][k].x, 
+              recv_buffs[j][k].y, recv_buffs[j][k].vx, recv_buffs[j][k].vy));
       }
     }
   }
@@ -276,7 +284,8 @@ int main (argc, argv)
     float wall_length = (vert_size+horiz_size)*2;
     end_time = MPI_Wtime();
     run_time = end_time - start_time;
-    printf("Simulated %d timesteps on %d processors in %g secs\n\n", i, nprocs, run_time);
+    printf("Simulated %d timesteps on %d processors in %g secs\n\n", 
+        i, nprocs, run_time);
 
     T = Ttot/nprocs;
     R = ptot*V/(N*nprocs*T*wall_length*ITERATIONS);

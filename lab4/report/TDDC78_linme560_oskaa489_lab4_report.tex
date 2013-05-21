@@ -88,16 +88,17 @@ Then for each timestep:
 \end{itemize}
 In this implementation each particle can only collide with one other particle during each timestep.
 This is a simplification, but it is reasonable if the number of collisions is low.
-This means that the number of particles has to low compared to the area of the box.
+This means that the number of particles has to be low compared to the area of the box.
 
 The above algorithm gives an asymptotic complexity of $O(N^2)$ if $N$ is the number of particles.
-This can be improved by a simplification.
+The number of timesteps can be included here but is left out, this is assumed to be constant for the rest of the report.
+The quadratic complexity can be improved by a simplification.
 If the velocities of the particles are small, particles will only interact with other particles if they are close to each other at the beginning of each timestep.
-The box can be divide into a number of regions and only particles that are in the same region at the start of each timestep needs to be checked for collisions.
+The box can be divided into a number of regions and only particles that are in the same region at the start of each timestep needs to be checked for collisions.
 Some collisions will be ignored if this is done, since there are no interactions between particles in different regions.
 If the timestep and velocities are small this will not affect the final result much.
-To minimize the number of missed collision, the area of each region divided by its circumference, should be maximized.
-A reasonably good way to do this is to divided the box into equally big rectangles.
+To minimize the number of missed collisions, the area of each region divided by its circumference, should be maximized.
+A reasonably good way to do this is to divide the box into equally big rectangles.
 The asymptotic complexity for this algorithm is $O(r(\frac{N}{r})^2) = O(\frac{N^2}{r})$ if $r$ is the number of regions that the box are divided into.
 This algorithm is also much more suited for parallelization.
 
@@ -121,10 +122,23 @@ The program was executed with some different parameters and R was calculated for
 The generated data can be seen in table \ref{data}.
 R seems to be constant.
 
-In figure \ref{exec} 
+In figure \ref{exec} the execution times for different problemsizes and number of ranks can be seen.
+It is hard to tell how fast these graphs grows, it is at least faster than linear.
+To check if the complexity $O((\frac{N}{p})^2)$ seems correct.
+Each datapoint is divided by the complexity that corresponds to that point.
+This will result in some sort of corrected excecution time which has the unit $sp^2N^{-2}$ where $s$ is seconds, $p$ is ranks and $N$ is number of particles.
+If the assumption about the complexity is correct all datapoints should now be the same.
+The plot can be seen in figure \ref{corr}.
+The curves in the plot seems to converge to a constant of about $5 \cdot 10^{-5}$.
+For low problem sizes the more ranks seem to create more overhead, but if the problem size grows this overhead doesn't make a big difference.
+Especially the run with 32 ranks is a lot slower than the others, and no run is slower than 1 second.
+This run needs two nodes and the extra second here is probably due to initialization of these.
+
+If the problem size is large enough it seems like one should be able to calulate the expected execution time of our program with the formula $T = 5 \cdot 10^{-5} \frac{N^2}{p^2}$
 
 
 \begin{table}[h!]
+  \begin{center}
   \caption{Data from particle simulation.}
   \label{data}
   \begin{tabular}[h]{|l|l|l|l|l|}
@@ -133,12 +147,25 @@ In figure \ref{exec}
     \hline
     418.41  & 20000 & 1.00e+08 (10000x10000) & 8.3256e-2  & 0.99 \\ 
     415.40  & 20000 & 8.40e+07 (28000x3000)  & 9.8715e-2  & 1.00 \\ 
-    411.55  & 9984  & 1.00e+08 (10000x100000 & 4.0979e-2  & 1.00 \\ 
+    411.55  & 9984  & 1.00e+08 (10000x100000)& 4.0979e-2  & 1.00 \\ 
     2521.34 & 9984  & 1.00e+08 (10000x10000) & 0.249838   & 0.99 \\
     912.35  & 23744 & 5.91e+09 (85832x68832) & 3.657e-3   & 1.00 \\
     \hline
   \end{tabular}
+  \end{center}
 \end{table}
+
+\begin{figure}[!h]
+  \caption{Execution times.}
+  \label{exec}
+  \includegraphics[scale=0.9]{../plots/exec_time.png}
+\end{figure}
+
+\begin{figure}[!h]
+  \caption{Corrected execution times.}
+  \label{corr}
+  \includegraphics[scale=0.9]{../plots/corr_time.png}
+\end{figure}
 
 \clearpage
 
@@ -204,4 +231,12 @@ In figure \ref{exec}
 \section{Source code}
 Files that are included but not listed here were downloaded from the course webpage and not modified.
 
+\lstinputlisting[caption=simulate.c]{../simulate.c}
+\clearpage
+\lstinputlisting[caption=structures.h]{../structures.h}
+\clearpage
+\lstinputlisting[caption=structures.c]{../structures.c}
+\clearpage
+\lstinputlisting[caption=definitions.h]{../definitions.h}
+\clearpage
 \end{document}
