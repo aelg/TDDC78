@@ -86,7 +86,8 @@ int main(){
     endline = ((rank+1)*n1)/numThreads;
     /* Some ugly stuff to set end end start correct.
      * The last region don't need to use a saved line for the last run.
-     * Instead it runs the standard loop for the last line too, as this is never updated.*/
+     * Instead it runs the standard loop for the last line too, 
+     * as this is never updated.*/
     if(rank == 0) ++startline;
     if(endline == n1) ++endline;
     for(k = 0; k < maxiter && glob_error;){
@@ -123,7 +124,8 @@ int main(){
       if(rank+1<numThreads){
         for(j = 1; j < n1; ++j){
           double tmp = prevl[rank][j];
-          prevl[rank][j] = (T[i-1][j] + prevf[rank+1][j] + T[i][j+1] + T[i][j-1])/4.0;
+          prevl[rank][j] = 
+            (T[i-1][j] + prevf[rank+1][j] + T[i][j+1] + T[i][j-1])/4.0;
           T[i-1][j] = tmp;
 
           error = error | fabs(T[i][j] - prevl[rank][j]) > tol;
