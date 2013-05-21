@@ -68,10 +68,10 @@
 \section{Particle Simulation}
 By simulating particle moving and interacting in a box the gas law $pV = nRT$ can be verified.
 The problem is solved for the 2 dimensional case, where the particles are moving in a rectangular plane.
-$p$ is the pressure, this is calculated by counting the momentum transferred to the box wall divided by the length of it every timestep.
+$p$ is the pressure, this is calculated by counting the momentum transferred to the box wall divided by the length of it every timeunit.
 $V$ is the area of the box (2d volume).
 $n$ is the number of particles in the box.
-$T$ is the temperature of the gas which is proportional to the average energy of the particles.
+$T$ is the temperature of the gas which is proportional to the average energy of the particles, the proportionality constant is defined as 1.
 Energy is calculated as $\frac{v^2}{2}$ where v is the velocity of a particle.
 The mass of the particles is the same for all of them and each particle weighs one mass unit.
 $R$ is a constant.
@@ -88,9 +88,9 @@ Then for each timestep:
 \end{itemize}
 In this implementation each particle can only collide with one other particle during each timestep.
 This is a simplification, but it is reasonable if the number of collisions is low.
-This means that the number of particles has to be low compared to the area of the box.
+This means that the number of particles has to be low compared to the area of the box and the length of each timestep.
 
-The above algorithm gives an asymptotic complexity of $O(N^2)$ if $N$ is the number of particles.
+The above algorithm gives an asymptotic complexity of $O(N^2)$ if $N$ is the number of particles, each particle is tested for collision with every other particle.
 The number of timesteps can be included here but is left out, this is assumed to be constant for the rest of the report.
 The quadratic complexity can be improved by a simplification.
 If the velocities of the particles are small, particles will only interact with other particles if they are close to each other at the beginning of each timestep.
@@ -99,7 +99,7 @@ Some collisions will be ignored if this is done, since there are no interactions
 If the timestep and velocities are small this will not affect the final result much.
 To minimize the number of missed collisions, the area of each region divided by its circumference, should be maximized.
 A reasonably good way to do this is to divide the box into equally big rectangles.
-The asymptotic complexity for this algorithm is $O(r(\frac{N}{r})^2) = O(\frac{N^2}{r})$ if $r$ is the number of regions that the box are divided into.
+If the distribution of particles is assumed uniform the asymptotic complexity for this algorithm is $O(r(\frac{N}{r})^2) = O(\frac{N^2}{r})$ if $r$ is the number of regions that the box are divided into.
 This algorithm is also much more suited for parallelization.
 
 The way we implementeded it was to use one region for each process.
@@ -114,7 +114,7 @@ This should not occur often and will probably not affect the result much.
 Only particles that moves between regions are communicated with MPI.
 This means that the interprocess communication is fairly low.
 Internally each process uses linked lists to store particles.
-This implementation should have the asymptotic complexity $O((\frac{N}{p})^2)$ where $p$ is the number of processes.
+This implementation should have the asymptotic complexity $O((\frac{N}{p})^2)$ of the cost, where $p$ is the number of processes.
 
 \subsection{Results}
 The results of particle simulation seems to agree with the gas law.
@@ -130,11 +130,15 @@ This will result in some sort of corrected excecution time which has the unit $s
 If the assumption about the complexity is correct all datapoints should now be the same.
 The plot can be seen in figure \ref{corr}.
 The curves in the plot seems to converge to a constant of about $5 \cdot 10^{-5}$.
-For low problem sizes the more ranks seem to create more overhead, but if the problem size grows this overhead doesn't make a big difference.
-Especially the run with 32 ranks is a lot slower than the others, and no run is slower than 1 second.
+
+For low problem sizes more ranks seem to create more overhead, but if the problem size grows this overhead doesn't make a big difference.
+The run with 32 ranks is a lot slower, for small problem sizes, than the others, and no run is faster than 1 second.
 This run needs two nodes and the extra second here is probably due to initialization of these.
 
-If the problem size is large enough it seems like one should be able to calulate the expected execution time of our program with the formula $T = 5 \cdot 10^{-5} \frac{N^2}{p^2}$
+If the problem size is large enough it seems like one should be able to calulate the expected 
+execution time of our program with the formula $T = 5 \cdot 10^{-5} \frac{N^2}{p^2}$.
+Where $T$ is the expected runtime of 10 000 timesteps in seconds.
+$N$ and $p$ is the number of particles and the number of ranks respectively.
 
 
 \begin{table}[h!]

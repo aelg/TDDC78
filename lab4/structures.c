@@ -1,6 +1,9 @@
 #include <string.h>
 #include "structures.h"
 
+/* Implements two linked list structures 
+ * to store particles and collisions. */
+
 void copy_pcord(pcord_t *to, pcord_t *from){
   memcpy(to, from, sizeof(pcord_t)/sizeof(char));
 }
@@ -14,6 +17,12 @@ particle_t* make_particle(double x, double y, double vx, double vy){
   tmp->prev = NULL;
   tmp->next = NULL;
   return tmp;
+}
+
+void init_part_list(part_list_t *p){
+  p->first = NULL;
+  p->last = NULL;
+  p->num_particles = 0;
 }
 
 void add_particle(part_list_t *l, particle_t *p){

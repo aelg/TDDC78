@@ -1,8 +1,11 @@
 #include "definitions.h"
 
+/* Implements two linked list structures 
+ * to store particles and collisions. */
+
 struct part_list{
   particle_t *first, *last;
-  int num_particles;
+  int64_t num_particles;
 };
 
 struct collision_pair{
@@ -21,6 +24,7 @@ typedef struct collision_list collision_list_t;
 
 void copy_pcord(pcord_t *to, pcord_t *from);
 
+void init_part_list(part_list_t *p);
 particle_t* make_particle(double x, double y, double vx, double vy);
 void add_particle(part_list_t *l, particle_t *p);
 void remove_particle(part_list_t *l, particle_t *p);

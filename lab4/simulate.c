@@ -5,6 +5,7 @@
 #include <time.h>
 #include <mpi.h>
 #include <inttypes.h>
+#include <VT.h>
 #include "coordinate.h"
 #include "definitions.h"
 #include "physics.h"
@@ -20,6 +21,8 @@
 
 float min_x, max_x, min_y, max_y;
 
+/* Checks if a particle is outside the region
+ * and returns where it should be sent. */
 int is_outside(particle_t *p){
   if(p->pcord.x < min_x) return LEFT;
   if(p->pcord.x >= max_x) return RIGHT;
@@ -28,6 +31,7 @@ int is_outside(particle_t *p){
   return -1;
 }
 
+/* Calculates processor grid layout */
 void calc_layout(int nprocs, int *rows, int *cols){
   int i;
   for(i = 1; i < sqrt((double)nprocs) + 0.01; ++i){
@@ -37,7 +41,6 @@ void calc_layout(int nprocs, int *rows, int *cols){
     }
   }
 }
-
 
 double randf(){
   return ((double)rand()/(double)RAND_MAX);
@@ -76,11 +79,28 @@ int main (argc, argv)
   collision_pair_t *c1;
 
   cord_t box;
+
+  int classhandle;
+  int pressure_counter;
+  int particle_counter;
+  double pressure_bounds[2] = {0, 1e56};
+  int64_t particle_bounds[2] = {0, 10000};
+  int collision_handle;
   
   /* starts MPI */
   MPI_Init (&argc, &argv);  
   MPI_Comm_rank (MPI_COMM_WORLD, &rank);
   MPI_Comm_size (MPI_COMM_WORLD, &nprocs);
+
+  /* Init pressure counter */
+  VT_classdef("Simulate", &classhandle);
+  VT_countdef("Pressure", classhandle, 
+      VT_COUNT_FLOAT | VT_COUNT_ABSVAL | VT_COUNT_VALID_SAMPLE, VT_ME, 
+      pressure_bounds, "p", &pressure_counter);
+  VT_countdef("Particels", classhandle, 
+      VT_COUNT_INTEGER64 | VT_COUNT_ABSVAL | VT_COUNT_VALID_SAMPLE, VT_ME, 
+      particle_bounds, "p", &particle_counter);
+  VT_funcdef("Collision analysis", classhandle, &collision_handle);
 
   /* Read arguments */
   if(argc != 5){
@@ -105,9 +125,7 @@ int main (argc, argv)
   dims[1] = rows;
   dims[0] = cols;
 
-  particles.first = NULL;
-  particles.last = NULL;
-  particles.num_particles = 0;
+  init_part_list(&particles);
 
   collisions.first = NULL;
   collisions.last = NULL;
@@ -126,7 +144,7 @@ int main (argc, argv)
   MPI_Type_commit(&pcord_mpi);
 
   /* Init random generator 
-   * (use rank to not seed with the same number for all rank)*/
+   * (use rank to not seed with the same number for all ranks)*/
   srand((unsigned int) time(NULL) + rank*100);
 
   /* Create grid cart */
@@ -160,7 +178,7 @@ int main (argc, argv)
 
   /* Initiate particles. */
   for(i = 0; i < N; ++i){
-    double angle = randf()*PI;
+    double angle = randf()*2*PI;
     double v = randf()*max_v;
     double x = randf()*(max_x - min_x) + min_x;
     double y = randf()*(max_y - min_y) + min_y;
@@ -180,6 +198,7 @@ int main (argc, argv)
     }
 
     /* Look for collisions. Use first found */
+    VT_enter(collision_handle, VT_NOSCL);
     p1 = particles.first;
     while(p1){
       p2 = p1->next;
@@ -196,6 +215,7 @@ int main (argc, argv)
       }
       p1 = p1->next;
     }
+    VT_leave(collision_handle);
 
     /* Move particles */
     p1 = particles.first;
@@ -205,6 +225,8 @@ int main (argc, argv)
       feuler(&(p1->pcord), TIME_STEP);
 
       pressure += wall_collide(&(p1->pcord), box);
+
+      /* Queue particle to be sent if outside region */
       if((dir = is_outside(p1)) != -1){
         particle_t *tmp;
         copy_pcord(&(send_buffs[dir][send_counts[dir]++]), &(p1->pcord));
@@ -225,6 +247,7 @@ int main (argc, argv)
       int dir;
       interact(&(c1->p1->pcord), &(c1->p2->pcord), c1->t);
 
+      /* Queue particle to be sent if outside region */
       if((dir = is_outside(c1->p1)) != -1){
         copy_pcord(&(send_buffs[dir][send_counts[dir]++]), &(c1->p1->pcord));
         free(c1->p1);
@@ -256,23 +279,23 @@ int main (argc, argv)
           MPI_ANY_SOURCE, 0, grid_comm, &(status[j]));
     }
     MPI_Waitall(4, request, MPI_STATUS_IGNORE);
-    /*MPI_Barrier(grid_comm);*/
     for(j = 0; j < 4; ++j){
       int count;
       MPI_Get_count(&(status[j]), pcord_mpi, &count);
       for(k = 0; k < count; ++k){
-        /*if(recv_buffs[j][k].x < min_x || recv_buffs[j][k].x > max_x 
-          ||  recv_buffs[j][k].y < min_y ||  recv_buffs[j][k].y > max_y)
-          printf("Got particle that is not in region.\n");*/
         add_particle(&particles, make_particle(recv_buffs[j][k].x, 
               recv_buffs[j][k].y, recv_buffs[j][k].vx, recv_buffs[j][k].vy));
       }
     }
+    VT_countval(1, &pressure_counter, &pressure);
+    VT_countval(1, &particle_counter, &(particles.num_particles));
   }
   MPI_Reduce(&T, &Ttot, 1, MPI_DOUBLE, MPI_SUM, 0, grid_comm);
   MPI_Reduce(&pressure, &ptot, 1, MPI_DOUBLE, MPI_SUM, 0, grid_comm);
 
   /*printf("rank %d #particles: %d\n", rank, particles.num_particles);*/
+
+  /* Free particles memory */
   p1 = particles.first;
   while(p1){
     p2 = p1->next;
@@ -280,6 +303,7 @@ int main (argc, argv)
     p1 = p2;
   }
 
+  /* Print result. */
   if(rank == 0){
     float wall_length = (vert_size+horiz_size)*2;
     end_time = MPI_Wtime();

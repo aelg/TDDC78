@@ -24,10 +24,8 @@
 struct particle {
   pcord_t  pcord;
   int ptype;        /* Used to simulate mixing of gases */
-  struct particle *next, *prev;
+  struct particle *next, *prev; /* Used by the linked list. */
 };
-
-
 
 typedef struct particle particle_t;
 
